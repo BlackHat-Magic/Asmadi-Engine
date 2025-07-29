@@ -7,6 +7,7 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_video.h>
+#include <SDL3_image/SDL_image.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +23,9 @@ typedef struct {
 
     // GPU stuff
     SDL_GPUDevice* device;
+
+    SDL_GPUTexture* texture;
+    SDL_GPUSampler* sampler;
 
     // time stuff
     Uint64 last_time;
@@ -97,7 +101,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // Create window
     state->window = SDL_CreateWindow(
         "C OpenGL", state->width, state->height,
-        SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL
+        SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN
     );
     if (!state->window) {
         SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
@@ -116,6 +120,82 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         return SDL_APP_FAILURE;
     }
 
+    // load texture
+    SDL_Surface* surface= IMG_Load("assets/test.bmp");
+    if (!surface) {
+        SDL_Log ("Failed to load texture: %s", SDL_GetError ());
+        return SDL_APP_FAILURE;
+    }
+    SDL_GPUTextureCreateInfo tex_create_info = {
+        .type = SDL_GPU_TEXTURETYPE_2D,
+        .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, // RGBA,
+        .width = (Uint32) surface->w,
+        .height = (Uint32) surface->h,
+        .layer_count_or_depth = 1,
+        .num_levels = 1,
+        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
+    };
+    state->texture = SDL_CreateGPUTexture (state->device, &tex_create_info);
+    if (!state->texture) {
+        SDL_Log ("Failed to create texture: %s", SDL_GetError());
+        SDL_DestroySurface (surface);
+        return SDL_APP_FAILURE;
+    }
+
+    // create transfer buffer
+    SDL_GPUTransferBufferCreateInfo transfer_info = {
+        .size = (Uint32) (surface->pitch * surface->h),
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+    };
+    SDL_GPUTransferBuffer* transfer_buf = SDL_CreateGPUTransferBuffer(state->device, &transfer_info);
+    void* data_ptr = SDL_MapGPUTransferBuffer(state->device, transfer_buf, false);
+    if (data_ptr == NULL) {
+        SDL_Log ("Failed to map transfer buffer: %s", SDL_GetError ());
+        SDL_ReleaseGPUTransferBuffer (state->device, transfer_buf);
+        SDL_DestroySurface(surface);
+        return SDL_APP_FAILURE;
+    }
+    SDL_memcpy (data_ptr, surface->pixels, transfer_info.size);
+    SDL_UnmapGPUTransferBuffer (state->device, transfer_buf);
+
+    // upload with a command buffer
+    SDL_GPUCommandBuffer* upload_cmd = SDL_AcquireGPUCommandBuffer(state->device);
+    SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass (upload_cmd);
+    SDL_GPUTextureTransferInfo src_info = {
+        .transfer_buffer = transfer_buf,
+        .offset = 0,
+        .pixels_per_row = (Uint32)surface->w,
+        .rows_per_layer = (Uint32)surface->h,
+    };
+    SDL_GPUTextureRegion dst_region = {
+        .texture = state->texture,
+        .w = (Uint32)surface->w,
+        .h = (Uint32)surface->h,
+        .d = 1,
+    };
+    SDL_UploadToGPUTexture(copy_pass, &src_info, &dst_region, false);
+    SDL_EndGPUCopyPass (copy_pass);
+    SDL_SubmitGPUCommandBuffer (upload_cmd);
+    SDL_ReleaseGPUTransferBuffer (state->device, transfer_buf);
+    SDL_DestroySurface (surface);
+
+    // create sampler
+    SDL_GPUSamplerCreateInfo sampler_info = {
+        .min_filter = SDL_GPU_FILTER_LINEAR,
+        .mag_filter = SDL_GPU_FILTER_LINEAR,
+        .mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR,
+        .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+        .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+        .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+        .max_anisotropy = 1.0f,
+        .enable_anisotropy = false
+    };
+    state->sampler = SDL_CreateGPUSampler (state->device, &sampler_info);
+    if (!state->sampler) {
+        SDL_Log ("Failed to create sampler: %s", SDL_GetError ());
+        return SDL_APP_FAILURE;
+    }
+
     // load triangle vertex shader
     SDL_GPUShader* triangle_vert = load_shader(
         state->device, "shaders/triangle.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX,
@@ -129,7 +209,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // load triangle fragment shader
     SDL_GPUShader* triangle_frag = load_shader(
         state->device, "shaders/triangle.frag.spv",
-        SDL_GPU_SHADERSTAGE_FRAGMENT, 0, 1, 0, 0
+        SDL_GPU_SHADERSTAGE_FRAGMENT, 1, 0, 0, 0
     );
     if (triangle_frag == NULL) {
         SDL_Log("Failed to load fragment shader: %s", SDL_GetError());
@@ -220,6 +300,12 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     SDL_BindGPUGraphicsPipeline(pass, state->triangle_pipeline);
     SDL_PushGPUVertexUniformData(cmd, 0, colors, sizeof(colors));
 
+    SDL_GPUTextureSamplerBinding tex_bind = {
+        .texture = state->texture,
+        .sampler = state->sampler
+    };
+    SDL_BindGPUFragmentSamplers (pass, 1, &tex_bind, 1);
+
     // draw triangle
     SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
 
@@ -232,7 +318,12 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
 void SDL_AppQuit(void* appstate, SDL_AppResult result) {
     AppState* state = (AppState*)appstate;
-
+    if (state->texture) {
+        SDL_ReleaseGPUTexture (state->device, state->texture);
+    }
+    if (state->sampler) {
+        SDL_ReleaseGPUSampler (state->device, state->sampler);
+    }
     if (state->triangle_pipeline) {
         SDL_ReleaseGPUGraphicsPipeline(state->device, state->triangle_pipeline);
     }

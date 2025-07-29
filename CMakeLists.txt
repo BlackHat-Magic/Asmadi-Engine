@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 find_package(SDL3 REQUIRED)
-# find_package(SDL3_image REQUIRED) # load textures
+find_package(SDL3_image REQUIRED) # load textures
 
 option(COMPILE_SHADERS "Compile shaders with glslangValidator" ON)
 if(COMPILE_SHADERS)
@@ -43,7 +43,7 @@ add_executable(space-pirates src/main.c)
 target_link_libraries(space-pirates
     PRIVATE
         SDL3::SDL3
-        # SDL3::SDL3_image
+        SDL3_image::SDL3_image
         m
 )
 
