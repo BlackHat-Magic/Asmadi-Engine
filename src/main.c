@@ -127,18 +127,18 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         SDL_Log("Failed to load texture: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
-    SDL_Surface* rgba_surface =
-        SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA8888);
+    SDL_Surface* abgr_surface =
+        SDL_ConvertSurface(surface, SDL_PIXELFORMAT_ABGR8888);
     SDL_DestroySurface(surface);
-    if (rgba_surface == NULL) {
+    if (abgr_surface == NULL) {
         SDL_Log("Failed to convert surface format: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
     SDL_GPUTextureCreateInfo tex_create_info = {
         .type                 = SDL_GPU_TEXTURETYPE_2D,
         .format               = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,  // RGBA,
-        .width                = (Uint32)rgba_surface->w,
-        .height               = (Uint32)rgba_surface->h,
+        .width                = (Uint32)abgr_surface->w,
+        .height               = (Uint32)abgr_surface->h,
         .layer_count_or_depth = 1,
         .num_levels           = 1,
         .usage                = SDL_GPU_TEXTUREUSAGE_SAMPLER
@@ -146,13 +146,13 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     state->texture = SDL_CreateGPUTexture(state->device, &tex_create_info);
     if (!state->texture) {
         SDL_Log("Failed to create texture: %s", SDL_GetError());
-        SDL_DestroySurface(rgba_surface);
+        SDL_DestroySurface(abgr_surface);
         return SDL_APP_FAILURE;
     }
 
     // create transfer buffer
     SDL_GPUTransferBufferCreateInfo transfer_info = {
-        .size  = (Uint32)(rgba_surface->pitch * rgba_surface->h),
+        .size  = (Uint32)(abgr_surface->pitch * abgr_surface->h),
         .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
     };
     SDL_GPUTransferBuffer* transfer_buf =
@@ -162,10 +162,10 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     if (data_ptr == NULL) {
         SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
         SDL_ReleaseGPUTransferBuffer(state->device, transfer_buf);
-        SDL_DestroySurface(rgba_surface);
+        SDL_DestroySurface(abgr_surface);
         return SDL_APP_FAILURE;
     }
-    SDL_memcpy(data_ptr, rgba_surface->pixels, transfer_info.size);
+    SDL_memcpy(data_ptr, abgr_surface->pixels, transfer_info.size);
     SDL_UnmapGPUTransferBuffer(state->device, transfer_buf);
 
     // upload with a command buffer
@@ -175,20 +175,20 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     SDL_GPUTextureTransferInfo src_info = {
         .transfer_buffer = transfer_buf,
         .offset          = 0,
-        .pixels_per_row  = (Uint32)rgba_surface->w,
-        .rows_per_layer  = (Uint32)rgba_surface->h,
+        .pixels_per_row  = (Uint32)abgr_surface->w,
+        .rows_per_layer  = (Uint32)abgr_surface->h,
     };
     SDL_GPUTextureRegion dst_region = {
         .texture = state->texture,
-        .w       = (Uint32)rgba_surface->w,
-        .h       = (Uint32)rgba_surface->h,
+        .w       = (Uint32)abgr_surface->w,
+        .h       = (Uint32)abgr_surface->h,
         .d       = 1,
     };
     SDL_UploadToGPUTexture(copy_pass, &src_info, &dst_region, false);
     SDL_EndGPUCopyPass(copy_pass);
     SDL_SubmitGPUCommandBuffer(upload_cmd);
     SDL_ReleaseGPUTransferBuffer(state->device, transfer_buf);
-    SDL_DestroySurface(rgba_surface);
+    SDL_DestroySurface(abgr_surface);
 
     // create sampler
     SDL_GPUSamplerCreateInfo sampler_info = {
