@@ -77,6 +77,8 @@ SDL_GPUShader* load_shader(
 }
 
 SDL_GPUTexture* load_texture(const char* bmp_file_path, SDL_GPUDevice* device) {
+    // note to self: don't forget to look at texture wrapping, texture filtering, mipmaps
+    // https://learnopengl.com/Getting-started/Textures
     // load texture
     SDL_Surface* surface = IMG_Load(bmp_file_path);
     if (surface == NULL) {
