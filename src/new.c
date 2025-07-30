@@ -448,7 +448,7 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result) {
         SDL_ReleaseGPUGraphicsPipeline(state->device, state->triangle_pipeline);
     }
     if (state->ubo) {
-        SDL_ReleaseGPUBuffer (state->device, state->ubo);
+        SDL_ReleaseGPUBuffer(state->device, state->ubo);
     }
     if (state->view_matrix) {
         free(state->view_matrix);
