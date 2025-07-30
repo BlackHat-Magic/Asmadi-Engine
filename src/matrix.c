@@ -4,15 +4,9 @@
 #define MAT4_IDX(row, col) ((col) * 4 + (row))
 
 // VEC2
-vec2 vec2_add (vec2 a, vec2 b) {
-    return (vec2){a.x + b.x, a.y + b.y};
-}
-vec2 vec2_sub(vec2 a, vec2 b) {
-    return (vec2){a.x - b.x, a.y - b.y};
-}
-vec2 vec2_scale(vec2 v, float s) {
-    return (vec2){v.x * s, v.y * s};
-}
+vec2 vec2_add(vec2 a, vec2 b) { return (vec2){a.x + b.x, a.y + b.y}; }
+vec2 vec2_sub(vec2 a, vec2 b) { return (vec2){a.x - b.x, a.y - b.y}; }
+vec2 vec2_scale(vec2 v, float s) { return (vec2){v.x * s, v.y * s}; }
 vec2 vec2_normalize(vec2 v) {
     float len = sqrtf(v.x * v.x + v.y * v.y);
     if (len > 0.0f) {
@@ -21,9 +15,7 @@ vec2 vec2_normalize(vec2 v) {
     return v;  // zero vector case
 }
 float vec2_dot(vec2 a, vec2 b) { return a.x * b.x + a.y * b.y; }
-float vec2_cross(vec2 a, vec2 b) {
-    return a.x * b.y - a.y * b.x;
-}
+float vec2_cross(vec2 a, vec2 b) { return a.x * b.y - a.y * b.x; }
 
 // VEC3
 vec3 vec3_add(vec3 a, vec3 b) {
@@ -32,9 +24,7 @@ vec3 vec3_add(vec3 a, vec3 b) {
 vec3 vec3_sub(vec3 a, vec3 b) {
     return (vec3){a.x - b.x, a.y - b.y, a.z - b.z};
 }
-vec3 vec3_scale(vec3 v, float s) {
-    return (vec3){v.x * s, v.y * s, v.z * s};
-}
+vec3 vec3_scale(vec3 v, float s) { return (vec3){v.x * s, v.y * s, v.z * s}; }
 vec3 vec3_normalize(vec3 v) {
     float len = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
     if (len > 0.0f) {
@@ -116,15 +106,14 @@ void mat4_multiply(mat4 out, mat4 a, mat4 b) {
 void mat4_perspective(
     mat4 m, float fov_rad, float aspect, float near, float far
 ) {
-    // Note to self: check out explanation of perspective and ortho matrices
-    // http://www.songho.ca/opengl/gl_projectionmatrix.html
     float tan_half_fov = tanf(fov_rad / 2.0f);
+    float focal        = 1.0f / tan_half_fov;
     mat4_identity(m);
-    m[MAT4_IDX(0, 0)] = 1.0f / (aspect * tan_half_fov);
-    m[MAT4_IDX(1, 1)] = 1.0f / tan_half_fov;
-    m[MAT4_IDX(2, 2)] = -(far + near) / (far - near);
-    m[MAT4_IDX(2, 3)] = -1.0f;
-    m[MAT4_IDX(3, 2)] = -(2.0f * far * near) / (far - near);
+    m[MAT4_IDX(0, 0)] = focal / aspect;
+    m[MAT4_IDX(1, 1)] = -focal;
+    m[MAT4_IDX(2, 2)] = -far / (far - near);
+    m[MAT4_IDX(2, 3)] = -(far * near) / (far - near);
+    m[MAT4_IDX(3, 2)] = -1.0f;
     m[MAT4_IDX(3, 3)] = 0.0f;
 }
 void mat4_look_at(mat4 m, vec3 eye, vec3 center, vec3 up) {

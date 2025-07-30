@@ -34,6 +34,7 @@ typedef struct {
     SDL_GPUSampler* sampler;
     SDL_GPUBuffer* vertex_buffer;
     SDL_GPUBuffer* index_buffer;
+    SDL_GPUTexture* depth_texture;
 
     // view matrix
     mat4* view_matrix;
@@ -216,6 +217,22 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         return SDL_APP_FAILURE;
     }
 
+    // depth texture
+    SDL_GPUTextureCreateInfo depth_info = {
+        .type                 = SDL_GPU_TEXTURETYPE_2D,
+        .format               = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+        .width                = state->width,
+        .height               = state->height,
+        .layer_count_or_depth = 1,
+        .num_levels           = 1,
+        .usage                = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET
+    };
+    state->depth_texture = SDL_CreateGPUTexture(state->device, &depth_info);
+    if (state->depth_texture == NULL) {
+        SDL_Log("Failed to create depth texture: %s", SDL_GetError());
+        return SDL_APP_FAILURE;
+    }
+
     // load texture
     state->texture = load_texture("assets/test.png", state->device);
     if (state->texture == NULL)
@@ -269,8 +286,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
                              state->device, state->window
                          )}
                     }, },
-        .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
-        .vertex_shader = triangle_vert,
+        .primitive_type  = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
+        .vertex_shader   = triangle_vert,
         .fragment_shader = triangle_frag,
         .vertex_input_state =
             {.vertex_buffer_descriptions =
@@ -291,7 +308,16 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
                       .format      = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
                       .offset      = 3 * sizeof(float)}  // texcoord (vec2)
                  }, .num_vertex_attributes = 2},
-        .rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL
+        .rasterizer_state =
+            {.fill_mode  = SDL_GPU_FILLMODE_FILL,
+                          .cull_mode  = SDL_GPU_CULLMODE_BACK,
+                          .front_face = SDL_GPU_FRONTFACE_CLOCKWISE},
+        .depth_stencil_state = {
+                          .enable_depth_test   = true,
+                          .enable_depth_write  = true,
+                          .compare_op          = SDL_GPU_COMPAREOP_LESS,
+                          .enable_stencil_test = false
+        }
     };
     SDL_GPUGraphicsPipeline* pipeline =
         SDL_CreateGPUGraphicsPipeline(state->device, &pipe_info);
@@ -307,52 +333,36 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
     // create quad
     float vertices[] = {
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+        // Face 0 (z = -0.5, reordered for consistent winding)
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 0.5f,
+        -0.5f, -0.5f, 1.0f, 0.0f, 0.5f, 0.5f, -0.5f, 1.0f, 1.0f, -0.5f, -0.5f,
+        -0.5f, 0.0f, 0.0f, -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
 
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        // Face 1 (z = 0.5, unchanged - correct winding)
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.5f,
+        0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f, 0.5f, 1.0f, 1.0f, -0.5f, 0.5f, 0.5f,
+        0.0f, 1.0f, -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
 
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        // Face 2 (x = -0.5, unchanged - correct winding)
+        -0.5f, 0.5f, 0.5f, 1.0f, 0.0f, -0.5f, 0.5f, -0.5f, 1.0f, 1.0f, -0.5f,
+        -0.5f, -0.5f, 0.0f, 1.0f, -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, -0.5f, -0.5f,
+        0.5f, 0.0f, 0.0f, -0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
 
-        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        // Face 3 (x = 0.5, reordered for consistent winding)
+        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.5f,
+        0.5f, -0.5f, 1.0f, 1.0f, 0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.5f, 0.5f,
+        0.5f, 1.0f, 0.0f, 0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
 
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        // Face 4 (y = -0.5, unchanged - correct winding)
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.5f,
+        -0.5f, 0.5f, 1.0f, 0.0f, 0.5f, -0.5f, 0.5f, 1.0f, 0.0f, -0.5f, -0.5f,
+        0.5f, 0.0f, 0.0f, -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
 
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+        // Face 5 (y = 0.5, reordered for consistent winding)
+        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.5f,
+        0.5f, -0.5f, 1.0f, 1.0f, 0.5f, 0.5f, 0.5f, 1.0f, 0.0f, -0.5f, 0.5f,
+        -0.5f, 0.0f, 1.0f, -0.5f, 0.5f, 0.5f, 0.0f, 0.0f
     };
-    // unsigned int indices[] = {
-    //     0, 1, 3,  // first triangle
-    //     1, 2, 3   // second triangle
-    // };
 
     // create vertex buffer
     SDL_GPUBufferCreateInfo vbo_info = {
@@ -396,7 +406,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // view matrix
     mat4* view = (mat4*)malloc(sizeof(mat4));
     mat4_identity(*view);
-    mat4_translate(*view, (vec3){0.0f, 0.0f, -150.0f});
+    mat4_translate(*view, (vec3){0.0f, 0.0f, -3.0f});
     state->view_matrix = view;
 
     // model matrix
@@ -422,7 +432,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     // dt
     const Uint64 now = SDL_GetPerformanceCounter();
 
-    float dt         = (float)(now - state->last_time) /
+    float dt = (float)(now - state->last_time) /
                (float)(SDL_GetPerformanceFrequency());
     state->last_time = now;
 
@@ -431,7 +441,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     mat4_rotate_y(*state->model_matrix, dt / 3.0f);
 
     // uniform buffer
-    UBOData ubo      = {0};
+    UBOData ubo = {0};
     SDL_memcpy(ubo.model, *state->model_matrix, sizeof(mat4));
     SDL_memcpy(ubo.view, *state->view_matrix, sizeof(mat4));
     SDL_memcpy(ubo.proj, *state->proj_matrix, sizeof(mat4));
@@ -451,15 +461,26 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
         return SDL_APP_FAILURE;
     }
 
+    // color target info
+    SDL_GPUColorTargetInfo color_target_info = {
+        .texture     = swapchain,
+        .clear_color = {0.0f, 0.0f, 0.0f, 1.0f},
+        .load_op     = SDL_GPU_LOADOP_CLEAR,
+        .store_op    = SDL_GPU_STOREOP_STORE
+    };
+
+    // depth target info
+    SDL_GPUDepthStencilTargetInfo depth_target_info = {
+        .texture     = state->depth_texture,
+        .load_op     = SDL_GPU_LOADOP_CLEAR,
+        .store_op    = SDL_GPU_STOREOP_STORE,
+        .cycle       = false,
+        .clear_depth = 1.0f
+    };
+
     // begin render pass
-    SDL_GPUColorTargetInfo color_target_info = {0};
-    color_target_info.texture                = swapchain;
-    color_target_info.clear_color =
-        (SDL_FColor){0.0f, 0.0f, 0.0f, 1.0f};  // black
-    color_target_info.load_op  = SDL_GPU_LOADOP_CLEAR;
-    color_target_info.store_op = SDL_GPU_STOREOP_STORE;
     SDL_GPURenderPass* pass =
-        SDL_BeginGPURenderPass(cmd, &color_target_info, 1, NULL);
+        SDL_BeginGPURenderPass(cmd, &color_target_info, 1, &depth_target_info);
     SDL_BindGPUGraphicsPipeline(pass, state->triangle_pipeline);
 
     // bind UBO
@@ -509,5 +530,8 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result) {
     }
     if (state->proj_matrix) {
         free(state->proj_matrix);
+    }
+    if (state->depth_texture) {
+        SDL_ReleaseGPUTexture(state->device, state->depth_texture);
     }
 }
