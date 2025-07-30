@@ -9,9 +9,16 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3_image/SDL_image.h>
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "matrix.h"
+
+#define STARTING_WIDTH 640
+#define STARTING_HEIGHT 480
+#define STARTING_FOV 70.0
 
 typedef struct {
     SDL_Window* window;
@@ -24,15 +31,30 @@ typedef struct {
 
     // GPU stuff
     SDL_GPUDevice* device;
-
     SDL_GPUTexture* texture;
     SDL_GPUSampler* sampler;
+
+    // view matrix
+    mat4* view_matrix;
+
+    // objects
+    mat4* model_matrix;
+
+    // camera
+    mat4* proj_matrix;
 
     // time stuff
     Uint64 last_time;
     Uint64 current_time;
     bool quit;
 } AppState;
+
+typedef struct {
+    float colors[3][4];
+    float model[16];
+    float view[16];
+    float proj[16];
+} PushData;
 
 // shader loader helper function
 SDL_GPUShader* load_shader(
@@ -162,8 +184,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
     // create appstate
     AppState* state = (AppState*)calloc(1, sizeof(AppState));
-    state->width    = 640;
-    state->height   = 480;
+    state->width    = STARTING_WIDTH;
+    state->height   = STARTING_HEIGHT;
 
     // initialize SDL
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -173,7 +195,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
     // Create window
     state->window = SDL_CreateWindow(
-        "C OpenGL", state->width, state->height,
+        "C Vulkan", state->width, state->height,
         SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN
     );
     if (!state->window) {
@@ -218,7 +240,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // load triangle vertex shader
     SDL_GPUShader* triangle_vert = load_shader(
         state->device, "shaders/triangle.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX,
-        0, 1, 0, 0
+        0, 0, 0, 0
     );
     if (triangle_vert == NULL) {
         SDL_Log("Failed to load vertex shader: %s", SDL_GetError());
@@ -263,6 +285,24 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     SDL_ReleaseGPUShader(state->device, triangle_frag);
     state->triangle_pipeline = pipeline;
 
+    // view matrix
+    mat4* view = (mat4*) malloc (sizeof (mat4));
+    mat4_identity (*view);
+    mat4_translate (*view, (vec3) {0.0f, 0.0f, -3.0f});
+    state->view_matrix = view;
+
+    // model matrix
+    mat4* model_matrix = (mat4*) malloc (sizeof (mat4));
+    mat4_identity(*model_matrix);
+    mat4_rotate_x(*model_matrix, -55.0f * M_PI / 180.0);
+    state->model_matrix=model_matrix;
+
+    // perspective matrix
+    mat4* proj = (mat4*) malloc (sizeof (mat4));
+    mat4_identity (*proj);
+    mat4_perspective(*proj, STARTING_FOV * M_PI / 180.0, (float) STARTING_WIDTH / (float) STARTING_HEIGHT, 0.01, 1000.0);
+    state->proj_matrix = proj;
+
     *appstate = state;
     return SDL_APP_CONTINUE;
 }
@@ -286,11 +326,16 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
     // reuse color values to avoid redundant calls to expensive trig functions
     // gcc -O2 would probably optimize this away, but it doesn't hurt
-    float colors[3][4] = {
-        {c1, c2, c3},
-        {c2, c3, c1},
-        {c3, c1, c2}
+    PushData push = {
+        .colors = {
+            {c1, c2, c3},
+            {c2, c3, c1},
+            {c3, c1, c2}
+        }
     };
+    SDL_memcpy (push.model, *state->model_matrix, sizeof(mat4));
+    SDL_memcpy (push.view, *state->view_matrix, sizeof (mat4));
+    SDL_memcpy (push.proj, *state->proj_matrix, sizeof (mat4));
 
     // acquire command buffer, swapchain
     SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(state->device);
@@ -309,6 +354,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
     // Begin render pass and bind pipeline
     SDL_GPUColorTargetInfo color_target_info = {0};
+
     color_target_info.texture                = swapchain;
     color_target_info.clear_color =
         (SDL_FColor){0.0f, 0.0f, 0.0f, 1.0f};  // black
@@ -317,8 +363,8 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     SDL_GPURenderPass* pass =
         SDL_BeginGPURenderPass(cmd, &color_target_info, 1, NULL);
     SDL_BindGPUGraphicsPipeline(pass, state->triangle_pipeline);
-    SDL_PushGPUVertexUniformData(cmd, 0, colors, sizeof(colors));
 
+    SDL_PushGPUVertexUniformData (cmd, 0, &push, sizeof (push));
     SDL_GPUTextureSamplerBinding tex_bind = {
         .texture = state->texture, .sampler = state->sampler
     };
@@ -344,5 +390,14 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result) {
     }
     if (state->triangle_pipeline) {
         SDL_ReleaseGPUGraphicsPipeline(state->device, state->triangle_pipeline);
+    }
+    if (state->view_matrix) {
+        free (state->view_matrix);
+    }
+    if (state->model_matrix) {
+        free (state->model_matrix);
+    }
+    if (state->proj_matrix) {
+        free (state->model_matrix);
     }
 }

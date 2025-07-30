@@ -1,4 +1,4 @@
-#include "math.h"
+#include "matrix.h"
 
 // Helper macro for mat4 indexing (column-major: m[col*4 + row])
 #define MAT4_IDX(row, col) ((col) * 4 + (row))
@@ -116,6 +116,8 @@ void mat4_multiply(mat4 out, mat4 a, mat4 b) {
 void mat4_perspective(
     mat4 m, float fov_rad, float aspect, float near, float far
 ) {
+    // Note to self: check out explanation of perspective and ortho matrices
+    // http://www.songho.ca/opengl/gl_projectionmatrix.html
     float tan_half_fov = tanf(fov_rad / 2.0f);
     mat4_identity(m);
     m[MAT4_IDX(0, 0)] = 1.0f / (aspect * tan_half_fov);
