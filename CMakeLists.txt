@@ -37,7 +37,7 @@ if(COMPILE_SHADERS)
 endif()
 
 # executable
-add_executable(space-pirates src/main.c)
+add_executable(space-pirates src/main.c src/matrix.c)
 
 # link libraries
 target_link_libraries(space-pirates
