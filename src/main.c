@@ -17,7 +17,7 @@
 
 #define STARTING_WIDTH 640
 #define STARTING_HEIGHT 480
-#define STARTING_FOV 70.0
+#define STARTING_FOV 45.0
 
 typedef struct {
     SDL_Window* window;
@@ -32,7 +32,8 @@ typedef struct {
     SDL_GPUDevice* device;
     SDL_GPUTexture* texture;
     SDL_GPUSampler* sampler;
-    SDL_GPUBuffer* ubo;
+    SDL_GPUBuffer* vertex_buffer;
+    SDL_GPUBuffer* index_buffer;
 
     // view matrix
     mat4* view_matrix;
@@ -216,7 +217,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     }
 
     // load texture
-    state->texture = load_texture("assets/test.bmp", state->device);
+    state->texture = load_texture("assets/test.png", state->device);
     if (state->texture == NULL)
         return SDL_APP_FAILURE;  // errors logged inside function
 
@@ -240,7 +241,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // load triangle vertex shader
     SDL_GPUShader* triangle_vert = load_shader(
         state->device, "shaders/triangle.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX,
-        0, 0, 1, 0
+        0, 1, 0, 0
     );
     if (triangle_vert == NULL) {
         SDL_Log("Failed to load vertex shader: %s", SDL_GetError());
@@ -268,11 +269,30 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
                              state->device, state->window
                          )}
                     }, },
-        .primitive_type  = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
-        .vertex_shader   = triangle_vert,
+        .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
+        .vertex_shader = triangle_vert,
         .fragment_shader = triangle_frag,
+        .vertex_input_state =
+            {.vertex_buffer_descriptions =
+                 (SDL_GPUVertexBufferDescription[]){
+                     {.slot               = 0,
+                      .pitch              = 5 * sizeof(float),
+                      .input_rate         = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+                      .instance_step_rate = 0}
+                 }, .num_vertex_buffers = 1,
+                          .vertex_attributes =
+                 (SDL_GPUVertexAttribute[]){
+                     {.location    = 0,
+                      .buffer_slot = 0,
+                      .format      = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                      .offset      = 0},  // pos (vec3)
+                     {.location    = 1,
+                      .buffer_slot = 0,
+                      .format      = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+                      .offset      = 3 * sizeof(float)}  // texcoord (vec2)
+                 }, .num_vertex_attributes = 2},
+        .rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL
     };
-    pipe_info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
     SDL_GPUGraphicsPipeline* pipeline =
         SDL_CreateGPUGraphicsPipeline(state->device, &pipe_info);
     if (pipeline == NULL) {
@@ -285,32 +305,107 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     SDL_ReleaseGPUShader(state->device, triangle_frag);
     state->triangle_pipeline = pipeline;
 
-    // create ubo
-    SDL_GPUBufferCreateInfo ubo_info = {
-        .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-        .size  = sizeof(UBOData)
+    // create quad
+    float vertices[] = {
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+        0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
     };
-    state->ubo = SDL_CreateGPUBuffer(state->device, &ubo_info);
-    if (state->ubo == NULL) {
-        SDL_Log("Failed to create Uniform Buffer Object: %s", SDL_GetError());
+    // unsigned int indices[] = {
+    //     0, 1, 3,  // first triangle
+    //     1, 2, 3   // second triangle
+    // };
+
+    // create vertex buffer
+    SDL_GPUBufferCreateInfo vbo_info = {
+        .usage = SDL_GPU_BUFFERUSAGE_VERTEX, .size = sizeof(vertices)
+    };
+    state->vertex_buffer = SDL_CreateGPUBuffer(state->device, &vbo_info);
+    if (!state->vertex_buffer) {
+        SDL_Log("Failed to create vertex buffer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+
+    // Upload vertex data
+    SDL_GPUTransferBufferCreateInfo transfer_info_v = {
+        .size = sizeof(vertices), .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+    };
+    SDL_GPUTransferBuffer* transfer_v =
+        SDL_CreateGPUTransferBuffer(state->device, &transfer_info_v);
+    void* data_v = SDL_MapGPUTransferBuffer(state->device, transfer_v, false);
+    SDL_memcpy(data_v, vertices, sizeof(vertices));
+    SDL_UnmapGPUTransferBuffer(state->device, transfer_v);
+
+    // Command buffer for upload
+    SDL_GPUCommandBuffer* upload_cmd =
+        SDL_AcquireGPUCommandBuffer(state->device);
+    SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(upload_cmd);
+
+    // Upload vertices
+    SDL_GPUTransferBufferLocation src_v = {
+        .transfer_buffer = transfer_v, .offset = 0
+    };
+    SDL_GPUBufferRegion dst_v = {
+        .buffer = state->vertex_buffer, .offset = 0, .size = sizeof(vertices)
+    };
+    SDL_UploadToGPUBuffer(copy_pass, &src_v, &dst_v, false);
+
+    SDL_EndGPUCopyPass(copy_pass);
+    SDL_SubmitGPUCommandBuffer(upload_cmd);
+    SDL_ReleaseGPUTransferBuffer(state->device, transfer_v);
+    // SDL_ReleaseGPUTransferBuffer(state->device, transfer_i);
 
     // view matrix
     mat4* view = (mat4*)malloc(sizeof(mat4));
     mat4_identity(*view);
-    mat4_translate(*view, (vec3){0.0f, 0.0f, -3.0f});
+    mat4_translate(*view, (vec3){0.0f, 0.0f, -150.0f});
     state->view_matrix = view;
 
     // model matrix
     mat4* model_matrix = (mat4*)malloc(sizeof(mat4));
     mat4_identity(*model_matrix);
-    mat4_rotate_x(*model_matrix, -55.0f * (float)M_PI / 180.0f);
     state->model_matrix = model_matrix;
 
     // perspective matrix
     mat4* proj = (mat4*)malloc(sizeof(mat4));
-    mat4_identity(*proj);
     mat4_perspective(
         *proj, STARTING_FOV * (float)M_PI / 180.0f,
         (float)STARTING_WIDTH / (float)STARTING_HEIGHT, 0.01f, 1000.0f
@@ -326,33 +421,17 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
     // dt
     const Uint64 now = SDL_GetPerformanceCounter();
+
     float dt         = (float)(now - state->last_time) /
                (float)(SDL_GetPerformanceFrequency());
     state->last_time = now;
 
-    // color
-    const Uint64 ticks_now = SDL_GetTicks();
-    const float progress   = (float)((ticks_now % 5000) / 5000.0 * 2 * M_PI);
+    // rotation
+    mat4_rotate_x(*state->model_matrix, dt / 5.0f);
+    mat4_rotate_y(*state->model_matrix, dt / 3.0f);
 
-    float c1 = sinf(progress) / 2 + 0.5f;
-    float c2 = sinf(progress + M_PI / 3 * 2) / 2 + 0.5f;
-    float c3 = sinf(progress + M_PI / 3 * 4) / 2 + 0.5f;
-
-    // reuse color values to avoid redundant calls to expensive trig functions
-    // gcc -O2 would probably optimize this away, but it doesn't hurt
+    // uniform buffer
     UBOData ubo      = {0};
-    ubo.colors[0][0] = c1;
-    ubo.colors[0][1] = c2;
-    ubo.colors[0][2] = c3;
-    ubo.colors[0][3] = 0.0f;
-    ubo.colors[1][0] = c2;
-    ubo.colors[1][1] = c3;
-    ubo.colors[1][2] = c1;
-    ubo.colors[1][3] = 0.0f;
-    ubo.colors[2][0] = c3;
-    ubo.colors[2][1] = c1;
-    ubo.colors[2][2] = c2;
-    ubo.colors[2][3] = 0.0f;
     SDL_memcpy(ubo.model, *state->model_matrix, sizeof(mat4));
     SDL_memcpy(ubo.view, *state->view_matrix, sizeof(mat4));
     SDL_memcpy(ubo.proj, *state->proj_matrix, sizeof(mat4));
@@ -372,41 +451,6 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
         return SDL_APP_FAILURE;
     }
 
-    // Create transfer buffer
-    SDL_GPUTransferBufferCreateInfo transfer_info = {
-        .size = sizeof(UBOData), .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
-    };
-    SDL_GPUTransferBuffer* transfer_buf =
-        SDL_CreateGPUTransferBuffer(state->device, &transfer_info);
-    if (transfer_buf == NULL) {
-        SDL_Log("Failed to create transfer buffer: %s", SDL_GetError());
-        SDL_SubmitGPUCommandBuffer(cmd);
-        return SDL_APP_FAILURE;
-    }
-    void* data_ptr =
-        SDL_MapGPUTransferBuffer(state->device, transfer_buf, false);
-    if (data_ptr == NULL) {
-        SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
-        SDL_ReleaseGPUTransferBuffer(state->device, transfer_buf);
-        SDL_SubmitGPUCommandBuffer(cmd);
-        return SDL_APP_FAILURE;
-    }
-    SDL_memcpy(data_ptr, &ubo, sizeof(UBOData));
-    SDL_UnmapGPUTransferBuffer(state->device, transfer_buf);
-
-    // copy transfer
-    SDL_GPUCopyPass* copy_pass             = SDL_BeginGPUCopyPass(cmd);
-    SDL_GPUTransferBufferLocation src_info = {
-        .transfer_buffer = transfer_buf,
-        .offset          = 0,
-    };
-    SDL_GPUBufferRegion dst_region = {
-        .buffer = state->ubo, .offset = 0, .size = sizeof(UBOData)
-    };
-    SDL_UploadToGPUBuffer(copy_pass, &src_info, &dst_region, false);
-    SDL_EndGPUCopyPass(copy_pass);
-    SDL_ReleaseGPUTransferBuffer(state->device, transfer_buf);
-
     // begin render pass
     SDL_GPUColorTargetInfo color_target_info = {0};
     color_target_info.texture                = swapchain;
@@ -419,15 +463,19 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     SDL_BindGPUGraphicsPipeline(pass, state->triangle_pipeline);
 
     // bind UBO
-    SDL_GPUBufferBinding ubo_binding = {.buffer = state->ubo, .offset = 0};
-    SDL_BindGPUVertexStorageBuffers(pass, 0, &state->ubo, 1);
+    SDL_PushGPUVertexUniformData(cmd, 0, &ubo, sizeof(UBOData));
     SDL_GPUTextureSamplerBinding tex_bind = {
         .texture = state->texture, .sampler = state->sampler
     };
     SDL_BindGPUFragmentSamplers(pass, 0, &tex_bind, 1);
 
+    SDL_GPUBufferBinding vbo_binding = {
+        .buffer = state->vertex_buffer, .offset = 0
+    };
+    SDL_BindGPUVertexBuffers(pass, 0, &vbo_binding, 1);
+
     // draw triangle
-    SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
+    SDL_DrawGPUPrimitives(pass, 36, 1, 0, 0);
 
     // end render pass and submit
     SDL_EndGPURenderPass(pass);
@@ -447,8 +495,11 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result) {
     if (state->triangle_pipeline) {
         SDL_ReleaseGPUGraphicsPipeline(state->device, state->triangle_pipeline);
     }
-    if (state->ubo) {
-        SDL_ReleaseGPUBuffer (state->device, state->ubo);
+    if (state->vertex_buffer) {
+        SDL_ReleaseGPUBuffer(state->device, state->vertex_buffer);
+    }
+    if (state->index_buffer) {
+        SDL_ReleaseGPUBuffer(state->device, state->index_buffer);
     }
     if (state->view_matrix) {
         free(state->view_matrix);
