@@ -189,7 +189,7 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
             state->quit = true;
             break;
         case SDL_EVENT_MOUSE_MOTION:
-            state->camera_yaw += event->motion.xrel * MOUSE_SENSE;
+            state->camera_yaw -= event->motion.xrel * MOUSE_SENSE;
             state->camera_pitch += event->motion.yrel * MOUSE_SENSE;
             // prevent gimbal lock
             if (state->camera_pitch > (float)M_PI * 0.49f) {
@@ -338,7 +338,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         .rasterizer_state =
             {.fill_mode  = SDL_GPU_FILLMODE_FILL,
                           .cull_mode  = SDL_GPU_CULLMODE_BACK,
-                          .front_face = SDL_GPU_FRONTFACE_CLOCKWISE},
+                          .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE},
         .depth_stencil_state = {
                           .enable_depth_test   = true,
                           .enable_depth_write  = true,
@@ -486,7 +486,10 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
                sinf(state->camera_yaw) * cosf(state->camera_pitch)}
     );
     vec3 camera_right =
-        vec3_normalize(vec3_cross(camera_forward, (vec3){0.0f, 1.0f, 1.0f}));
+        vec3_normalize(vec3_cross(camera_forward, (vec3){0.0f, -1.0f, 0.0f}));
+
+    vec3 camera_up =
+        vec3_cross(camera_forward, vec3_scale(camera_right, -1.0f));
 
     // movement
     int numkeys;
@@ -496,6 +499,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     if (key_state[SDL_SCANCODE_A]) motion = vec3_sub(motion, camera_right);
     if (key_state[SDL_SCANCODE_S]) motion = vec3_sub(motion, camera_forward);
     if (key_state[SDL_SCANCODE_D]) motion = vec3_add(motion, camera_right);
+    if (key_state[SDL_SCANCODE_SPACE]) motion = vec3_add(motion, camera_up);
     motion             = vec3_normalize(motion);
     motion             = vec3_scale(motion, dt * MOVEMENT_SPEED);
     *state->camera_pos = vec3_add(*state->camera_pos, motion);
