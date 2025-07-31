@@ -338,7 +338,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         .rasterizer_state =
             {.fill_mode  = SDL_GPU_FILLMODE_FILL,
                           .cull_mode  = SDL_GPU_CULLMODE_BACK,
-                          .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE},
+                          .front_face = SDL_GPU_FRONTFACE_CLOCKWISE},
         .depth_stencil_state = {
                           .enable_depth_test   = true,
                           .enable_depth_write  = true,
@@ -453,7 +453,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     vec3* camera_pos    = (vec3*)malloc(sizeof(vec3));
     *camera_pos         = (vec3){0.0f, 0.0f, -2.0f};
     state->camera_pos   = camera_pos;
-    state->camera_yaw   = M_PI / 2.0f;
+    state->camera_yaw   = M_PI;
     state->camera_pitch = 0.0f;
     state->camera_roll  = 0.0f;
     SDL_SetWindowRelativeMouseMode(state->window, true);
@@ -476,20 +476,20 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     state->last_time = now;
 
     // rotation
-    mat4_rotate_x(*state->model_matrix, dt / 5.0f);
-    mat4_rotate_y(*state->model_matrix, dt / 3.0f);
+    // mat4_rotate_x(*state->model_matrix, dt / 5.0f);
+    // mat4_rotate_y(*state->model_matrix, dt / 3.0f);
 
     // camera forward vector
-    vec3 camera_forward = vec3_normalize(
-        (vec3){cosf(state->camera_yaw) * cosf(state->camera_pitch),
-               sinf(state->camera_pitch),
-               sinf(state->camera_yaw) * cosf(state->camera_pitch)}
-    );
-    vec3 camera_right =
-        vec3_normalize(vec3_cross(camera_forward, (vec3){0.0f, -1.0f, 0.0f}));
+    vec3 world_up = {0.0f, 1.0f, 0.0f};
 
-    vec3 camera_up =
-        vec3_cross(camera_forward, vec3_scale(camera_right, -1.0f));
+    vec3 camera_forward = vec3_normalize((vec3){
+        -sinf(state->camera_yaw) * cosf(state->camera_pitch),
+        sinf(state->camera_pitch),
+        -cosf(state->camera_yaw) * cosf(state->camera_pitch)
+    });
+
+    vec3 camera_right = vec3_normalize(vec3_cross(camera_forward, world_up));
+    vec3 camera_up    = vec3_cross(camera_forward, camera_right);  /* now guaranteed orthogonal */
 
     // movement
     int numkeys;
@@ -505,11 +505,10 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     *state->camera_pos = vec3_add(*state->camera_pos, motion);
 
     // look
-    vec3 target = vec3_add(*state->camera_pos, camera_forward);
-    mat4_look_at(
-        *state->view_matrix, *state->camera_pos, target,
-        (vec3){0.0f, 1.0f, 0.0f}
-    );
+    vec3 target = vec3_add(*state->camera_pos, camera_forward);mat4_identity(*state->view_matrix);
+    mat4_rotate_x(*state->view_matrix, -state->camera_pitch);
+    mat4_rotate_y(*state->view_matrix, -state->camera_yaw);
+    mat4_translate(*state->view_matrix, vec3_scale(*state->camera_pos, -1.0f));
 
     // uniform buffer
     UBOData ubo = {0};

@@ -118,8 +118,9 @@ void mat4_perspective(
 }
 void mat4_look_at(mat4 m, vec3 eye, vec3 center, vec3 up) {
     vec3 f = vec3_normalize(vec3_sub(center, eye));
-    vec3 s = vec3_normalize(vec3_cross(up, f));
-    vec3 u = vec3_cross(f, s);
+    vec3 s = vec3_normalize(vec3_cross(f, up));  // Changed order
+    vec3 u = vec3_cross(s, f);                    // Changed order
+    
     mat4_identity(m);
     m[MAT4_IDX(0, 0)] = s.x;
     m[MAT4_IDX(0, 1)] = u.x;
@@ -132,5 +133,5 @@ void mat4_look_at(mat4 m, vec3 eye, vec3 center, vec3 up) {
     m[MAT4_IDX(2, 2)] = -f.z;
     m[MAT4_IDX(0, 3)] = -vec3_dot(s, eye);
     m[MAT4_IDX(1, 3)] = -vec3_dot(u, eye);
-    m[MAT4_IDX(2, 3)] = vec3_dot(f, eye);  // note the sign flip
+    m[MAT4_IDX(2, 3)] = vec3_dot(f, eye);
 }
