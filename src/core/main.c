@@ -106,7 +106,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
     // create box
     Entity box             = create_entity();
-    MeshComponent box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
+    MeshComponent* box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
+    if (box_mesh == NULL) return SDL_APP_FAILURE; // logging handled inside create_box_mesh()
     add_mesh(box, box_mesh);
     MaterialComponent box_material =
         create_basic_material((vec3){0.75f, 0.0f, 0.0f}, state->device);

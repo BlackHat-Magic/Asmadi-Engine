@@ -5,7 +5,7 @@
 #include <string.h>
 
 TransformComponent transforms[MAX_ENTITIES];
-MeshComponent meshes[MAX_ENTITIES];
+MeshComponent* meshes[MAX_ENTITIES];
 MaterialComponent materials[MAX_ENTITIES];
 uint8_t entity_active[MAX_ENTITIES] = {0};
 
@@ -23,16 +23,16 @@ void destroy_entity(AppState* state, Entity e) {
     if (e >= MAX_ENTITIES || !entity_active[e]) return;
     entity_active[e] = 0;
 
-    if (meshes[e].vertex_buffer)
-        SDL_ReleaseGPUBuffer(state->device, meshes[e].vertex_buffer);
-    if (meshes[e].index_buffer)
-        SDL_ReleaseGPUBuffer(state->device, meshes[e].index_buffer);
+    if (meshes[e]->vertex_buffer)
+        SDL_ReleaseGPUBuffer(state->device, meshes[e]->vertex_buffer);
+    if (meshes[e]->index_buffer)
+        SDL_ReleaseGPUBuffer(state->device, meshes[e]->index_buffer);
     if (materials[e].texture)
         SDL_ReleaseGPUTexture(state->device, materials[e].texture);
 
     // cleanup resources
     memset(&transforms[e], 0, sizeof(TransformComponent));
-    memset(&meshes[e], 0, sizeof(MeshComponent));
+    memset(meshes[e], 0, sizeof(MeshComponent));
     memset(&materials[e], 0, sizeof(MaterialComponent));
 
     if (materials[e].pipeline)
@@ -53,7 +53,7 @@ void add_transform(Entity e, vec3 pos, vec3 rot, vec3 scale) {
     mat4_scale(transforms[e].model, scale);
 }
 
-void add_mesh(Entity e, MeshComponent mesh) {
+void add_mesh(Entity e, MeshComponent* mesh) {
     if (e >= MAX_ENTITIES || !entity_active[e]) return;
     meshes[e] = mesh;
 }
@@ -101,7 +101,7 @@ SDL_AppResult render_system(AppState* state) {
         SDL_BeginGPURenderPass(cmd, &color_target_info, 1, &depth_target_info);
 
     for (Entity e = 0; e < MAX_ENTITIES; e++) {
-        if (!entity_active[e] || !meshes[e].vertex_buffer)
+        if (!entity_active[e] || !meshes[e]->vertex_buffer)
             continue;  // skip if no mesh/inactive
 
         UBOData ubo = {0};
@@ -128,20 +128,20 @@ SDL_AppResult render_system(AppState* state) {
         SDL_BindGPUFragmentSamplers(pass, 0, &tex_bind, 1);
 
         SDL_GPUBufferBinding vbo_binding = {
-            .buffer = meshes[e].vertex_buffer, .offset = 0
+            .buffer = meshes[e]->vertex_buffer, .offset = 0
         };
         SDL_BindGPUVertexBuffers(pass, 0, &vbo_binding, 1);
 
-        if (meshes[e].index_buffer) {
+        if (meshes[e]->index_buffer) {
             SDL_GPUBufferBinding ibo_binding = {
-                .buffer = meshes[e].index_buffer, .offset = 0
+                .buffer = meshes[e]->index_buffer, .offset = 0
             };
-            SDL_BindGPUIndexBuffer(pass, &ibo_binding, meshes[e].index_size);
+            SDL_BindGPUIndexBuffer(pass, &ibo_binding, meshes[e]->index_size);
             SDL_DrawGPUIndexedPrimitives(
-                pass, meshes[e].num_indices, 1, 0, 0, 0
+                pass, meshes[e]->num_indices, 1, 0, 0, 0
             );
         } else {
-            SDL_DrawGPUPrimitives(pass, meshes[e].num_vertices, 1, 0, 0);
+            SDL_DrawGPUPrimitives(pass, meshes[e]->num_vertices, 1, 0, 0);
         }
     }
 

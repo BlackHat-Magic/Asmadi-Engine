@@ -41,7 +41,7 @@ typedef struct {
 
 // ECS storage arrays per component type (sparse; use entity as index)
 extern TransformComponent transforms[MAX_ENTITIES];
-extern MeshComponent meshes[MAX_ENTITIES];
+extern MeshComponent* meshes[MAX_ENTITIES];
 extern MaterialComponent materials[MAX_ENTITIES];
 extern uint8_t entity_active[MAX_ENTITIES];
 
@@ -51,7 +51,7 @@ void destroy_entity (AppState* state, Entity e);
 
 // add components
 void add_transform (Entity e, vec3 pos, vec3 rot, vec3 scale);
-void add_mesh (Entity e, MeshComponent mesh);
+void add_mesh (Entity e, MeshComponent* mesh);
 void add_material (Entity e, MaterialComponent material);
 
 SDL_AppResult render_system (AppState* state);
