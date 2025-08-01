@@ -1,7 +1,4 @@
-#ifndef MATH_H
-#define MATH_H
-
-#include <math.h>
+#pragma once
 
 typedef struct {
     float x, y;
@@ -46,5 +43,3 @@ void mat4_scale(mat4 m, vec3 v);
 void mat4_multiply(mat4 out, mat4 a, mat4 b);
 void mat4_perspective(mat4 m, float fov_rad, float aspect, float near, float far);
 void mat4_look_at(mat4 m, vec3 eye, vec3 center, vec3 up);
-
-#endif // MATH_H
