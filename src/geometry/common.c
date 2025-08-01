@@ -3,7 +3,7 @@
 #include <SDL3/SDL_gpu.h>
 #include <stdint.h>
 
-static void upload_indices(
+void upload_indices(
     SDL_GPUDevice* device, void* indices, size_t size,
     SDL_GPUBuffer** out_buffer
 ) {
@@ -35,7 +35,7 @@ static void upload_indices(
     SDL_ReleaseGPUTransferBuffer(device, transfer);
 }
 
-static void upload_vertices(
+void upload_vertices(
     SDL_GPUDevice* device, float* vertices, size_t size,
     SDL_GPUBuffer** out_buffer
 ) {

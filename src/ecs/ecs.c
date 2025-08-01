@@ -35,6 +35,10 @@ void destroy_entity(AppState* state, Entity e) {
     memset(&transforms[e], 0, sizeof(TransformComponent));
     memset(&meshes[e], 0, sizeof(MeshComponent));
     memset(&materials[e], 0, sizeof(MaterialComponent));
+
+    if (materials[e].pipeline) SDL_ReleaseGPUGraphicsPipeline (state->device, materials[e].pipeline);
+    if (materials[e].vertex_shader) SDL_ReleaseGPUShader (state->device, materials[e].vertex_shader);
+    if (materials[e].fragment_shader) SDL_ReleaseGPUShader (state->device, materials[e].fragment_shader);
 }
 
 void add_transform(Entity e, vec3 pos, vec3 rot, vec3 scale) {
@@ -52,10 +56,9 @@ void add_mesh(Entity e, MeshComponent mesh) {
     meshes[e] = mesh;
 }
 
-void add_material(Entity e, vec3 color, SDL_GPUTexture* texture) {
+void add_material(Entity e, MaterialComponent material) {
     if (e >= MAX_ENTITIES || !entity_active[e]) return;
-    materials[e].color   = color;
-    materials[e].texture = texture;
+    materials[e] = material;
 }
 
 SDL_AppResult render_system(AppState* state) {
@@ -94,7 +97,6 @@ SDL_AppResult render_system(AppState* state) {
     // begin render pass
     SDL_GPURenderPass* pass =
         SDL_BeginGPURenderPass(cmd, &color_target_info, 1, &depth_target_info);
-    SDL_BindGPUGraphicsPipeline(pass, state->triangle_pipeline);
 
     for (Entity e = 0; e < MAX_ENTITIES; e++) {
         if (!entity_active[e] || !meshes[e].vertex_buffer)
@@ -107,6 +109,12 @@ SDL_AppResult render_system(AppState* state) {
         // Colors: use material.color (shader uses colors[3])
         for (int i = 0; i < 3; i++)
             memcpy((void*)&ubo.colors[i], &materials[e].color, sizeof(vec3));
+
+        if (materials[e].pipeline) {
+            SDL_BindGPUGraphicsPipeline(pass, materials[e].pipeline);
+        } else {
+            continue;
+        }
 
         SDL_PushGPUVertexUniformData(cmd, 0, &ubo, sizeof(UBOData));
 

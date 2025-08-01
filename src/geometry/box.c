@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-MeshComponent create_cube_mesh(
+MeshComponent create_box_mesh(
     float l, float w, float h, SDL_GPUDevice* device
 ) {
     float wx = w / 2.0f;
@@ -55,7 +55,7 @@ MeshComponent create_cube_mesh(
     upload_vertices(device, vertices, sizeof(vertices), &vbo);
 
     SDL_GPUBuffer* ibo = NULL;
-    upload_vertices(device, vertices, sizeof(indices), &ibo);
+    upload_indices(device, vertices, sizeof(indices), &ibo);
 
     return (MeshComponent){.vertex_buffer = vbo,
                            .num_vertices  = 24,

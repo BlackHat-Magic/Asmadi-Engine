@@ -41,7 +41,10 @@ endif()
 add_executable(space-pirates
     src/core/main.c
     src/ecs/ecs.c
+    src/geometry/common.c
     src/geometry/box.c
+    src/material/common.c
+    src/material/basic_material.c
     src/math/matrix.c
 )
 

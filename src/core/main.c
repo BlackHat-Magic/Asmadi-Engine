@@ -10,134 +10,21 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_video.h>
-#include <SDL3_image/SDL_image.h>
 #include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
 
+#include "math/matrix.h"
 #include "core/appstate.h"
 #include "ecs/ecs.h"
-#include "math/matrix.h"
+#include "geometry/box.h"
+#include "material/common.h"
+#include "material/basic_material.h"
 
 #define STARTING_WIDTH 640
 #define STARTING_HEIGHT 480
 #define STARTING_FOV 70.0
 #define MOUSE_SENSE 1.0f / 100.0f
 #define MOVEMENT_SPEED 3.0f
-
-// shader loader helper function
-SDL_GPUShader* load_shader(
-    SDL_GPUDevice* device, const char* filename, SDL_GPUShaderStage stage,
-    Uint32 sampler_count, Uint32 uniform_buffer_count,
-    Uint32 storage_buffer_count, Uint32 storage_texture_count
-) {
-    if (!SDL_GetPathInfo(filename, NULL)) {
-        SDL_Log("Couldn't read file %s: %s", filename, SDL_GetError());
-        return NULL;
-    }
-
-    const char* entrypoint     = "main";
-    SDL_GPUShaderFormat format = SDL_GPU_SHADERFORMAT_SPIRV;
-
-    size_t code_size;
-    void* code = SDL_LoadFile(filename, &code_size);
-    if (code == NULL) {
-        SDL_Log("Could't read file %s: %s", filename, SDL_GetError());
-        return NULL;
-    }
-
-    SDL_GPUShaderCreateInfo shader_info = {
-        .code                 = code,
-        .code_size            = code_size,
-        .entrypoint           = entrypoint,
-        .format               = format,
-        .stage                = stage,
-        .num_samplers         = sampler_count,
-        .num_uniform_buffers  = uniform_buffer_count,
-        .num_storage_buffers  = storage_buffer_count,
-        .num_storage_textures = storage_texture_count,
-    };
-
-    SDL_GPUShader* shader = SDL_CreateGPUShader(device, &shader_info);
-    SDL_free(code);
-    if (shader == NULL) {
-        SDL_Log("Couldn't create GPU Shader: %s", SDL_GetError());
-        return NULL;
-    }
-    return shader;
-}
-
-SDL_GPUTexture* load_texture(const char* bmp_file_path, SDL_GPUDevice* device) {
-    // note to self: don't forget to look at texture wrapping, texture
-    // filtering, mipmaps https://learnopengl.com/Getting-started/Textures load
-    // texture
-    SDL_Surface* surface = IMG_Load(bmp_file_path);
-    if (surface == NULL) {
-        SDL_Log("Failed to load texture: %s", SDL_GetError());
-        return NULL;
-    }
-    SDL_Surface* abgr_surface =
-        SDL_ConvertSurface(surface, SDL_PIXELFORMAT_ABGR8888);
-    SDL_DestroySurface(surface);
-    if (abgr_surface == NULL) {
-        SDL_Log("Failed to convert surface format: %s", SDL_GetError());
-        return NULL;
-    }
-    SDL_GPUTextureCreateInfo tex_create_info = {
-        .type                 = SDL_GPU_TEXTURETYPE_2D,
-        .format               = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,  // RGBA,
-        .width                = (Uint32)abgr_surface->w,
-        .height               = (Uint32)abgr_surface->h,
-        .layer_count_or_depth = 1,
-        .num_levels           = 1,
-        .usage                = SDL_GPU_TEXTUREUSAGE_SAMPLER
-    };
-    SDL_GPUTexture* texture = SDL_CreateGPUTexture(device, &tex_create_info);
-    if (texture == NULL) {
-        SDL_Log("Failed to create texture: %s", SDL_GetError());
-        return NULL;
-    }
-
-    // create transfer buffer
-    SDL_GPUTransferBufferCreateInfo transfer_info = {
-        .size  = (Uint32)(abgr_surface->pitch * abgr_surface->h),
-        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
-    };
-    SDL_GPUTransferBuffer* transfer_buf =
-        SDL_CreateGPUTransferBuffer(device, &transfer_info);
-    void* data_ptr = SDL_MapGPUTransferBuffer(device, transfer_buf, false);
-    if (data_ptr == NULL) {
-        SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
-        SDL_ReleaseGPUTransferBuffer(device, transfer_buf);
-        SDL_DestroySurface(abgr_surface);
-        return NULL;
-    }
-    SDL_memcpy(data_ptr, abgr_surface->pixels, transfer_info.size);
-    SDL_UnmapGPUTransferBuffer(device, transfer_buf);
-
-    // upload with a command buffer
-    SDL_GPUCommandBuffer* upload_cmd    = SDL_AcquireGPUCommandBuffer(device);
-    SDL_GPUCopyPass* copy_pass          = SDL_BeginGPUCopyPass(upload_cmd);
-    SDL_GPUTextureTransferInfo src_info = {
-        .transfer_buffer = transfer_buf,
-        .offset          = 0,
-        .pixels_per_row  = (Uint32)abgr_surface->w,
-        .rows_per_layer  = (Uint32)abgr_surface->h,
-    };
-    SDL_GPUTextureRegion dst_region = {
-        .texture = texture,
-        .w       = (Uint32)abgr_surface->w,
-        .h       = (Uint32)abgr_surface->h,
-        .d       = 1,
-    };
-    SDL_UploadToGPUTexture(copy_pass, &src_info, &dst_region, false);
-    SDL_EndGPUCopyPass(copy_pass);
-    SDL_SubmitGPUCommandBuffer(upload_cmd);
-    SDL_ReleaseGPUTransferBuffer(device, transfer_buf);
-    SDL_DestroySurface(abgr_surface);
-
-    return texture;
-}
 
 SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
     AppState* state = (AppState*)appstate;
@@ -217,10 +104,20 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         return SDL_APP_FAILURE;
     }
 
-    // load texture
-    state->texture = load_texture("assets/test.png", state->device);
-    if (state->texture == NULL)
-        return SDL_APP_FAILURE;  // errors logged inside function
+    // create box
+    Entity box = create_entity();
+    MeshComponent box_mesh = create_box_mesh (1.0f, 1.0f, 1.0f, state->device);
+    add_mesh (box, box_mesh);
+    MaterialComponent box_material = create_basic_material ((vec3) {0.75f, 0.0f, 0.0f}, state->device);
+    set_vertex_shader(state->device, &box_material, "shaders/triangle.vert.spv", SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
+    set_fragment_shader (state->device, &box_material, "shaders/triangle.frag.spv", SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
+    add_material(box, box_material);
+    add_transform (
+        box, 
+        (vec3) {0.0f, 0.0f, 0.0f}, 
+        (vec3) {0.0f, 0.0f, 0.0f}, 
+        (vec3) {1.0f, 1.0f, 1.0f}
+    );
 
     // create sampler
     SDL_GPUSamplerCreateInfo sampler_info = {
@@ -239,90 +136,15 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         return SDL_APP_FAILURE;
     }
 
-    // load triangle vertex shader
-    SDL_GPUShader* triangle_vert = load_shader(
-        state->device, "shaders/triangle.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX,
-        0, 1, 0, 0
-    );
-    if (triangle_vert == NULL) {
-        SDL_Log("Failed to load vertex shader: %s", SDL_GetError());
+    state->texture = load_texture(state->device, "assets/test.png");
+    if (!state->texture) {
+        SDL_Log("Failed to load fallback texture");
         return SDL_APP_FAILURE;
     }
-
-    // load triangle fragment shader
-    SDL_GPUShader* triangle_frag = load_shader(
-        state->device, "shaders/triangle.frag.spv",
-        SDL_GPU_SHADERSTAGE_FRAGMENT, 1, 0, 0, 0
-    );
-    if (triangle_frag == NULL) {
-        SDL_Log("Failed to load fragment shader: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
-    }
-
-    // create shader pipeline
-    SDL_GPUGraphicsPipelineCreateInfo pipe_info = {
-        .target_info =
-            {
-                          .num_color_targets = 1,
-                          .color_target_descriptions =
-                    (SDL_GPUColorTargetDescription[]){
-                        {.format = SDL_GetGPUSwapchainTextureFormat(
-                             state->device, state->window
-                         )}
-                    }, },
-        .primitive_type  = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
-        .vertex_shader   = triangle_vert,
-        .fragment_shader = triangle_frag,
-        .vertex_input_state =
-            {.vertex_buffer_descriptions =
-                 (SDL_GPUVertexBufferDescription[]){
-                     {.slot               = 0,
-                      .pitch              = 5 * sizeof(float),
-                      .input_rate         = SDL_GPU_VERTEXINPUTRATE_VERTEX,
-                      .instance_step_rate = 0}
-                 }, .num_vertex_buffers = 1,
-                          .vertex_attributes =
-                 (SDL_GPUVertexAttribute[]){
-                     {.location    = 0,
-                      .buffer_slot = 0,
-                      .format      = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
-                      .offset      = 0},  // pos (vec3)
-                     {.location    = 1,
-                      .buffer_slot = 0,
-                      .format      = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
-                      .offset      = 3 * sizeof(float)}  // texcoord (vec2)
-                 }, .num_vertex_attributes = 2},
-        .rasterizer_state =
-            {.fill_mode  = SDL_GPU_FILLMODE_FILL,
-                          .cull_mode  = SDL_GPU_CULLMODE_BACK,
-                          .front_face = SDL_GPU_FRONTFACE_CLOCKWISE},
-        .depth_stencil_state = {
-                          .enable_depth_test   = true,
-                          .enable_depth_write  = true,
-                          .compare_op          = SDL_GPU_COMPAREOP_LESS,
-                          .enable_stencil_test = false
-        }
-    };
-    SDL_GPUGraphicsPipeline* pipeline =
-        SDL_CreateGPUGraphicsPipeline(state->device, &pipe_info);
-    if (pipeline == NULL) {
-        SDL_Log(
-            "Could not create triangle graphics pipeline: %s", SDL_GetError()
-        );
-        return SDL_APP_FAILURE;
-    }
-    SDL_ReleaseGPUShader(state->device, triangle_vert);
-    SDL_ReleaseGPUShader(state->device, triangle_frag);
-    state->triangle_pipeline = pipeline;
 
     // view matrix
     mat4* view = (mat4*)malloc(sizeof(mat4));
     mat4_identity(*view);
-
-    // model matrix
-    mat4* model_matrix = (mat4*)malloc(sizeof(mat4));
-    mat4_identity(*model_matrix);
-    state->model_matrix = model_matrix;
 
     // perspective matrix
     mat4* proj = (mat4*)malloc(sizeof(mat4));
@@ -390,6 +212,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     *state->camera_pos = vec3_add(*state->camera_pos, motion);
 
     // look
+    mat4_identity(*state->view_matrix);
     mat4_rotate_x(*state->view_matrix, -state->camera_pitch);
     mat4_rotate_y(*state->view_matrix, -state->camera_yaw);
     mat4_translate(*state->view_matrix, vec3_scale(*state->camera_pos, -1.0f));
@@ -407,20 +230,8 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result) {
     if (state->sampler) {
         SDL_ReleaseGPUSampler(state->device, state->sampler);
     }
-    if (state->triangle_pipeline) {
-        SDL_ReleaseGPUGraphicsPipeline(state->device, state->triangle_pipeline);
-    }
-    if (state->vertex_buffer) {
-        SDL_ReleaseGPUBuffer(state->device, state->vertex_buffer);
-    }
-    if (state->index_buffer) {
-        SDL_ReleaseGPUBuffer(state->device, state->index_buffer);
-    }
     if (state->view_matrix) {
         free(state->view_matrix);
-    }
-    if (state->model_matrix) {
-        free(state->model_matrix);
     }
     if (state->proj_matrix) {
         free(state->proj_matrix);

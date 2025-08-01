@@ -9,23 +9,14 @@ typedef struct {
     Uint32 width;
     Uint32 height;
 
-    // the triangle \[T]/
-    SDL_GPUGraphicsPipeline* triangle_pipeline;
-    SDL_GPUBuffer* triangle_vertex_buffer;
-
     // GPU stuff
     SDL_GPUDevice* device;
     SDL_GPUTexture* texture;
     SDL_GPUSampler* sampler;
-    SDL_GPUBuffer* vertex_buffer;
-    SDL_GPUBuffer* index_buffer;
     SDL_GPUTexture* depth_texture;
 
     // view matrix
     mat4* view_matrix;
-
-    // objects
-    mat4* model_matrix;
 
     // camera
     mat4* proj_matrix;

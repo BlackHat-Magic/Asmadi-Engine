@@ -32,6 +32,9 @@ typedef struct {
 typedef struct {
     vec3 color;
     SDL_GPUTexture* texture;
+    SDL_GPUShader* vertex_shader;
+    SDL_GPUShader* fragment_shader;
+    SDL_GPUGraphicsPipeline* pipeline;
 } MaterialComponent;
 
 // TODO: colliders
@@ -49,6 +52,6 @@ void destroy_entity (AppState* state, Entity e);
 // add components
 void add_transform (Entity e, vec3 pos, vec3 rot, vec3 scale);
 void add_mesh (Entity e, MeshComponent mesh);
-void add_material (Entity e, vec3 color, SDL_GPUTexture* texture); // NULL for color only
+void add_material (Entity e, MaterialComponent material);
 
 SDL_AppResult render_system (AppState* state);
