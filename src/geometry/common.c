@@ -14,7 +14,7 @@ int upload_indices(
     };
     *out_buffer = SDL_CreateGPUBuffer(device, &ibo_info);
     if (out_buffer == NULL) {
-        SDL_Log ("Failed to create index buffer object: %s", SDL_GetError ());
+        SDL_Log("Failed to create index buffer object: %s", SDL_GetError());
         return 1;
     }
 
@@ -24,25 +24,25 @@ int upload_indices(
     SDL_GPUTransferBuffer* transfer =
         SDL_CreateGPUTransferBuffer(device, &transfer_info);
     if (transfer == NULL) {
-        SDL_Log ("Failed to create transfer buffer: %s", SDL_GetError());
+        SDL_Log("Failed to create transfer buffer: %s", SDL_GetError());
         return 1;
     }
     void* data = SDL_MapGPUTransferBuffer(device, transfer, false);
     if (data == NULL) {
-        SDL_Log ("Failed to map transfer buffer: %s", SDL_GetError());
+        SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
         return 1;
     }
     SDL_memcpy(data, indices, size);
     SDL_UnmapGPUTransferBuffer(device, transfer);
 
-    SDL_GPUCommandBuffer* cmd         = SDL_AcquireGPUCommandBuffer(device);
+    SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(device);
     if (cmd == NULL) {
-        SDL_Log ("Failed to acquire GPU command buffer: %s", SDL_GetError ());
+        SDL_Log("Failed to acquire GPU command buffer: %s", SDL_GetError());
         return 1;
     }
-    SDL_GPUCopyPass* copy             = SDL_BeginGPUCopyPass(cmd);
+    SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(cmd);
     if (copy == NULL) {
-        SDL_Log ("Failed to begin GPU copy pass: %s", SDL_GetError ());
+        SDL_Log("Failed to begin GPU copy pass: %s", SDL_GetError());
         return 1;
     }
     SDL_GPUTransferBufferLocation src = {
@@ -69,7 +69,7 @@ int upload_vertices(
     };
     *out_buffer = SDL_CreateGPUBuffer(device, &vbo_info);
     if (out_buffer == NULL) {
-        SDL_Log ("Failed to create vertex buffer object: %s", SDL_GetError ());
+        SDL_Log("Failed to create vertex buffer object: %s", SDL_GetError());
         return 1;
     }
 
@@ -79,25 +79,25 @@ int upload_vertices(
     SDL_GPUTransferBuffer* transfer =
         SDL_CreateGPUTransferBuffer(device, &transfer_info);
     if (transfer == NULL) {
-        SDL_Log ("Failed to map transfer buffer: %s", SDL_GetError());
+        SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
         return 1;
     }
     void* data = SDL_MapGPUTransferBuffer(device, transfer, false);
     if (data == NULL) {
-        SDL_Log ("Failed to map transfer buffer: %s", SDL_GetError());
+        SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
         return 1;
     }
     memcpy(data, vertices, size);
     SDL_UnmapGPUTransferBuffer(device, transfer);
 
-    SDL_GPUCommandBuffer* cmd         = SDL_AcquireGPUCommandBuffer(device);
+    SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(device);
     if (cmd == NULL) {
-        SDL_Log ("Failed to acquire GPU command buffer: %s", SDL_GetError ());
+        SDL_Log("Failed to acquire GPU command buffer: %s", SDL_GetError());
         return 1;
     }
-    SDL_GPUCopyPass* copy             = SDL_BeginGPUCopyPass(cmd);
+    SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(cmd);
     if (copy == NULL) {
-        SDL_Log ("Failed to begin GPU copy pass: %s", SDL_GetError ());
+        SDL_Log("Failed to begin GPU copy pass: %s", SDL_GetError());
         return 1;
     }
     SDL_GPUTransferBufferLocation src = {

@@ -105,9 +105,10 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     }
 
     // create box
-    Entity box             = create_entity();
+    Entity box              = create_entity();
     MeshComponent* box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
-    if (box_mesh == NULL) return SDL_APP_FAILURE; // logging handled inside create_box_mesh()
+    if (box_mesh == NULL)
+        return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
     add_mesh(box, box_mesh);
     MaterialComponent box_material =
         create_basic_material((vec3){0.75f, 0.0f, 0.0f}, state->device);
@@ -115,12 +116,14 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         state->device, &box_material, "shaders/triangle.vert.spv",
         SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
     );
-    if (vert_failed) return SDL_APP_FAILURE; // logging handled in set_vertex_shader
+    if (vert_failed)
+        return SDL_APP_FAILURE;  // logging handled in set_vertex_shader
     int frag_failed = set_fragment_shader(
         state->device, &box_material, "shaders/triangle.frag.spv",
         SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
     );
-    if (frag_failed) return SDL_APP_FAILURE; // logging handled in set_fragment_shader
+    if (frag_failed)
+        return SDL_APP_FAILURE;  // logging handled in set_fragment_shader
     add_material(box, box_material);
     add_transform(
         box, (vec3){0.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f},
