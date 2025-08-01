@@ -1,7 +1,7 @@
+#include "material/common.h"
+
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
-
-#include "material/common.h"
 
 // shader loader helper function
 SDL_GPUShader* load_shader(
@@ -118,52 +118,71 @@ SDL_GPUTexture* load_texture(SDL_GPUDevice* device, const char* bmp_file_path) {
     return texture;
 }
 
-void set_vertex_shader(SDL_GPUDevice *device, MaterialComponent *mat, const char *filepath, SDL_GPUTextureFormat swapchain_format) {
-    mat->vertex_shader = load_shader (device, filepath, SDL_GPU_SHADERSTAGE_VERTEX, 0, 1, 0, 0);
+void set_vertex_shader(
+    SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath,
+    SDL_GPUTextureFormat swapchain_format
+) {
+    mat->vertex_shader =
+        load_shader(device, filepath, SDL_GPU_SHADERSTAGE_VERTEX, 0, 1, 0, 0);
     if (mat->vertex_shader && mat->fragment_shader) {
-        build_pipeline (device, mat, swapchain_format);
+        build_pipeline(device, mat, swapchain_format);
     }
 }
 
-void set_fragment_shader(SDL_GPUDevice *device, MaterialComponent *mat, const char *filepath, SDL_GPUTextureFormat swapchain_format) {
-    mat->fragment_shader = load_shader (device, filepath, SDL_GPU_SHADERSTAGE_FRAGMENT, 1, 0, 0, 0);
+void set_fragment_shader(
+    SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath,
+    SDL_GPUTextureFormat swapchain_format
+) {
+    mat->fragment_shader =
+        load_shader(device, filepath, SDL_GPU_SHADERSTAGE_FRAGMENT, 1, 0, 0, 0);
     if (mat->vertex_shader && mat->fragment_shader) {
-        build_pipeline (device, mat, swapchain_format);
+        build_pipeline(device, mat, swapchain_format);
     }
 }
 
-static void build_pipeline(SDL_GPUDevice *device, MaterialComponent *mat, SDL_GPUTextureFormat swapchain_format) {
+static void build_pipeline(
+    SDL_GPUDevice* device, MaterialComponent* mat,
+    SDL_GPUTextureFormat swapchain_format
+) {
     SDL_GPUGraphicsPipelineCreateInfo pipe_info = {
-        .target_info = {
-            .num_color_targets = 1,
-            .color_target_descriptions = (SDL_GPUColorTargetDescription[]){
-                {.format = swapchain_format}
-            },
-        },
-        .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
-        .vertex_shader = mat->vertex_shader,
+        .target_info =
+            {
+                          .num_color_targets = 1,
+                          .color_target_descriptions =
+                    (SDL_GPUColorTargetDescription[]){
+                        {.format = swapchain_format}
+                    }, },
+        .primitive_type  = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
+        .vertex_shader   = mat->vertex_shader,
         .fragment_shader = mat->fragment_shader,
-        .vertex_input_state = {
-            .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[]){
-                {.slot = 0, .pitch = 5 * sizeof(float), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX, .instance_step_rate = 0}
-            },
-            .num_vertex_buffers = 1,
-            .vertex_attributes = (SDL_GPUVertexAttribute[]){
-                {.location = 0, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = 0},  // pos
-                {.location = 1, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, .offset = 3 * sizeof(float)}  // texcoord
-            },
-            .num_vertex_attributes = 2
-        },
-        .rasterizer_state = {
-            .fill_mode = SDL_GPU_FILLMODE_FILL,
-            .cull_mode = SDL_GPU_CULLMODE_BACK,
-            .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE
-        },
+        .vertex_input_state =
+            {.vertex_buffer_descriptions =
+                 (SDL_GPUVertexBufferDescription[]){
+                     {.slot               = 0,
+                      .pitch              = 5 * sizeof(float),
+                      .input_rate         = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+                      .instance_step_rate = 0}
+                 }, .num_vertex_buffers = 1,
+                          .vertex_attributes =
+                 (SDL_GPUVertexAttribute[]){
+                     {.location    = 0,
+                      .buffer_slot = 0,
+                      .format      = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                      .offset      = 0},  // pos
+                     {.location    = 1,
+                      .buffer_slot = 0,
+                      .format      = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+                      .offset      = 3 * sizeof(float)}  // texcoord
+                 }, .num_vertex_attributes = 2},
+        .rasterizer_state =
+            {.fill_mode  = SDL_GPU_FILLMODE_FILL,
+                          .cull_mode  = SDL_GPU_CULLMODE_BACK,
+                          .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE},
         .depth_stencil_state = {
-            .enable_depth_test = true,
-            .enable_depth_write = true,
-            .compare_op = SDL_GPU_COMPAREOP_LESS,
-            .enable_stencil_test = false
+                          .enable_depth_test   = true,
+                          .enable_depth_write  = true,
+                          .compare_op          = SDL_GPU_COMPAREOP_LESS,
+                          .enable_stencil_test = false
         }
     };
     mat->pipeline = SDL_CreateGPUGraphicsPipeline(device, &pipe_info);

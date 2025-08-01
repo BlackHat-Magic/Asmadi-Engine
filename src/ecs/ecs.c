@@ -23,7 +23,6 @@ void destroy_entity(AppState* state, Entity e) {
     if (e >= MAX_ENTITIES || !entity_active[e]) return;
     entity_active[e] = 0;
 
-    // TODO: is NULL okay here?
     if (meshes[e].vertex_buffer)
         SDL_ReleaseGPUBuffer(state->device, meshes[e].vertex_buffer);
     if (meshes[e].index_buffer)
@@ -36,9 +35,12 @@ void destroy_entity(AppState* state, Entity e) {
     memset(&meshes[e], 0, sizeof(MeshComponent));
     memset(&materials[e], 0, sizeof(MaterialComponent));
 
-    if (materials[e].pipeline) SDL_ReleaseGPUGraphicsPipeline (state->device, materials[e].pipeline);
-    if (materials[e].vertex_shader) SDL_ReleaseGPUShader (state->device, materials[e].vertex_shader);
-    if (materials[e].fragment_shader) SDL_ReleaseGPUShader (state->device, materials[e].fragment_shader);
+    if (materials[e].pipeline)
+        SDL_ReleaseGPUGraphicsPipeline(state->device, materials[e].pipeline);
+    if (materials[e].vertex_shader)
+        SDL_ReleaseGPUShader(state->device, materials[e].vertex_shader);
+    if (materials[e].fragment_shader)
+        SDL_ReleaseGPUShader(state->device, materials[e].fragment_shader);
 }
 
 void add_transform(Entity e, vec3 pos, vec3 rot, vec3 scale) {

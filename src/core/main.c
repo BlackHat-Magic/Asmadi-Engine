@@ -13,12 +13,12 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "math/matrix.h"
 #include "core/appstate.h"
 #include "ecs/ecs.h"
 #include "geometry/box.h"
-#include "material/common.h"
 #include "material/basic_material.h"
+#include "material/common.h"
+#include "math/matrix.h"
 
 #define STARTING_WIDTH 640
 #define STARTING_HEIGHT 480
@@ -105,18 +105,23 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     }
 
     // create box
-    Entity box = create_entity();
-    MeshComponent box_mesh = create_box_mesh (1.0f, 1.0f, 1.0f, state->device);
-    add_mesh (box, box_mesh);
-    MaterialComponent box_material = create_basic_material ((vec3) {0.75f, 0.0f, 0.0f}, state->device);
-    set_vertex_shader(state->device, &box_material, "shaders/triangle.vert.spv", SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
-    set_fragment_shader (state->device, &box_material, "shaders/triangle.frag.spv", SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM);
+    Entity box             = create_entity();
+    MeshComponent box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
+    add_mesh(box, box_mesh);
+    MaterialComponent box_material =
+        create_basic_material((vec3){0.75f, 0.0f, 0.0f}, state->device);
+    set_vertex_shader(
+        state->device, &box_material, "shaders/triangle.vert.spv",
+        SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
+    );
+    set_fragment_shader(
+        state->device, &box_material, "shaders/triangle.frag.spv",
+        SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
+    );
     add_material(box, box_material);
-    add_transform (
-        box, 
-        (vec3) {0.0f, 0.0f, 0.0f}, 
-        (vec3) {0.0f, 0.0f, 0.0f}, 
-        (vec3) {1.0f, 1.0f, 1.0f}
+    add_transform(
+        box, (vec3){0.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f},
+        (vec3){1.0f, 1.0f, 1.0f}
     );
 
     // create sampler
@@ -145,6 +150,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // view matrix
     mat4* view = (mat4*)malloc(sizeof(mat4));
     mat4_identity(*view);
+    state->view_matrix = view;
 
     // perspective matrix
     mat4* proj = (mat4*)malloc(sizeof(mat4));
