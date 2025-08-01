@@ -111,14 +111,16 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     add_mesh(box, box_mesh);
     MaterialComponent box_material =
         create_basic_material((vec3){0.75f, 0.0f, 0.0f}, state->device);
-    set_vertex_shader(
+    int vert_failed = set_vertex_shader(
         state->device, &box_material, "shaders/triangle.vert.spv",
         SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
     );
-    set_fragment_shader(
+    if (vert_failed) return SDL_APP_FAILURE; // logging handled in set_vertex_shader
+    int frag_failed = set_fragment_shader(
         state->device, &box_material, "shaders/triangle.frag.spv",
         SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
     );
+    if (frag_failed) return SDL_APP_FAILURE; // logging handled in set_fragment_shader
     add_material(box, box_material);
     add_transform(
         box, (vec3){0.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f},

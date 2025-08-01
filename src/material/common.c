@@ -84,6 +84,10 @@ SDL_GPUTexture* load_texture(SDL_GPUDevice* device, const char* bmp_file_path) {
     };
     SDL_GPUTransferBuffer* transfer_buf =
         SDL_CreateGPUTransferBuffer(device, &transfer_info);
+    if (transfer_buf == NULL) {
+        SDL_Log ("Failed to create transfer buffer: %s", SDL_GetError ());
+        return NULL;
+    }
     void* data_ptr = SDL_MapGPUTransferBuffer(device, transfer_buf, false);
     if (data_ptr == NULL) {
         SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
@@ -96,7 +100,15 @@ SDL_GPUTexture* load_texture(SDL_GPUDevice* device, const char* bmp_file_path) {
 
     // upload with a command buffer
     SDL_GPUCommandBuffer* upload_cmd    = SDL_AcquireGPUCommandBuffer(device);
+    if (upload_cmd == NULL) {
+        SDL_Log ("Failed to acquire GPU command buffer: %s", SDL_GetError ());
+        return NULL;
+    }
     SDL_GPUCopyPass* copy_pass          = SDL_BeginGPUCopyPass(upload_cmd);
+    if (copy_pass == NULL) {
+        SDL_Log ("Failed to begin GPU copy pass: %s", SDL_GetError ());
+        return NULL;
+    }
     SDL_GPUTextureTransferInfo src_info = {
         .transfer_buffer = transfer_buf,
         .offset          = 0,
@@ -118,29 +130,38 @@ SDL_GPUTexture* load_texture(SDL_GPUDevice* device, const char* bmp_file_path) {
     return texture;
 }
 
-void set_vertex_shader(
+// returns 0 on success 1 on failure
+int set_vertex_shader(
     SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath,
     SDL_GPUTextureFormat swapchain_format
 ) {
     mat->vertex_shader =
         load_shader(device, filepath, SDL_GPU_SHADERSTAGE_VERTEX, 0, 1, 0, 0);
+    if (mat->vertex_shader == NULL) return 1; // logging handled in load_shader()
     if (mat->vertex_shader && mat->fragment_shader) {
-        build_pipeline(device, mat, swapchain_format);
+        int pipe_failed = build_pipeline(device, mat, swapchain_format);
+        if (pipe_failed) return 1; // logging handled in build_pipeline()
     }
+    return 0;
 }
 
-void set_fragment_shader(
+// returns 0 on success 1 on failure
+int set_fragment_shader(
     SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath,
     SDL_GPUTextureFormat swapchain_format
 ) {
     mat->fragment_shader =
         load_shader(device, filepath, SDL_GPU_SHADERSTAGE_FRAGMENT, 1, 0, 0, 0);
+    if (mat->fragment_shader == NULL) return 1; // logging handled in load_shader()
     if (mat->vertex_shader && mat->fragment_shader) {
-        build_pipeline(device, mat, swapchain_format);
+        int pipe_failed = build_pipeline(device, mat, swapchain_format);
+        if (pipe_failed) return 1; // logging handled in build_pipeline()
     }
+    return 0;
 }
 
-static void build_pipeline(
+// returns 0 on success 1 on failure
+static int build_pipeline(
     SDL_GPUDevice* device, MaterialComponent* mat,
     SDL_GPUTextureFormat swapchain_format
 ) {
@@ -188,5 +209,8 @@ static void build_pipeline(
     mat->pipeline = SDL_CreateGPUGraphicsPipeline(device, &pipe_info);
     if (!mat->pipeline) {
         SDL_Log("Failed to create material pipeline: %s", SDL_GetError());
+        return 1;
     }
+
+    return 0;
 }

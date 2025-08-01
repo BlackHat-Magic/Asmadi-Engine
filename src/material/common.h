@@ -8,8 +8,8 @@ SDL_GPUShader* load_shader (SDL_GPUDevice* device, const char* filename, SDL_GPU
 
 SDL_GPUTexture* load_texture(SDL_GPUDevice* device, const char* bmp_file_path);
 
-void set_vertex_shader (SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath, SDL_GPUTextureFormat swapchain_format);
+int set_vertex_shader (SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath, SDL_GPUTextureFormat swapchain_format);
 
-void set_fragment_shader (SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath, SDL_GPUTextureFormat swapchain_format);
+int set_fragment_shader (SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath, SDL_GPUTextureFormat swapchain_format);
 
-static void build_pipeline (SDL_GPUDevice* device, MaterialComponent* mat, SDL_GPUTextureFormat swapchain_format);
+static int build_pipeline (SDL_GPUDevice* device, MaterialComponent* mat, SDL_GPUTextureFormat swapchain_format);
