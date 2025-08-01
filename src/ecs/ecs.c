@@ -1,11 +1,13 @@
-#include "ecs/ecs.h"
+#include <stdlib.h>
+#include <string.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_gpu.h>
-#include <string.h>
+
+#include "ecs/ecs.h"
 
 TransformComponent transforms[MAX_ENTITIES];
-MeshComponent* meshes[MAX_ENTITIES];
+MeshComponent* meshes[MAX_ENTITIES] = {NULL};
 MaterialComponent materials[MAX_ENTITIES];
 uint8_t entity_active[MAX_ENTITIES] = {0};
 
@@ -32,7 +34,8 @@ void destroy_entity(AppState* state, Entity e) {
 
     // cleanup resources
     memset(&transforms[e], 0, sizeof(TransformComponent));
-    memset(meshes[e], 0, sizeof(MeshComponent));
+    // memset(meshes[e], 0, sizeof(MeshComponent));
+    if (meshes[e]) free(meshes[e]);
     memset(&materials[e], 0, sizeof(MaterialComponent));
 
     if (materials[e].pipeline)
@@ -109,8 +112,12 @@ SDL_AppResult render_system(AppState* state) {
         memcpy(ubo.view, *state->view_matrix, sizeof(mat4));
         memcpy(ubo.proj, *state->proj_matrix, sizeof(mat4));
         // Colors: use material.color (shader uses colors[3])
-        for (int i = 0; i < 3; i++)
-            memcpy((void*)&ubo.colors[i], &materials[e].color, sizeof(vec3));
+        for (int i = 0; i < 3; i++) {
+            ubo.colors[i][0] = materials[e].color.x;
+            ubo.colors[i][1] = materials[e].color.y;
+            ubo.colors[i][2] = materials[e].color.z;
+            ubo.colors[i][3] = 0.0f; // padding
+        }
 
         if (materials[e].pipeline) {
             SDL_BindGPUGraphicsPipeline(pass, materials[e].pipeline);

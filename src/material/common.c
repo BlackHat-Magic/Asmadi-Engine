@@ -1,6 +1,8 @@
 #include "material/common.h"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_filesystem.h>
+#include <SDL3/SDL_gpu.h>
 #include <SDL3_image/SDL_image.h>
 
 // shader loader helper function
@@ -50,6 +52,14 @@ SDL_GPUTexture* load_texture(SDL_GPUDevice* device, const char* bmp_file_path) {
     // note to self: don't forget to look at texture wrapping, texture
     // filtering, mipmaps https://learnopengl.com/Getting-started/Textures load
     // texture
+    
+    // does the file exist
+    if (!SDL_GetPathInfo(bmp_file_path, NULL)) {
+        SDL_Log ("Couldn't read file: %s", SDL_GetError ());
+        return NULL;
+    }
+
+    // surface
     SDL_Surface* surface = IMG_Load(bmp_file_path);
     if (surface == NULL) {
         SDL_Log("Failed to load texture: %s", SDL_GetError());
@@ -199,8 +209,8 @@ static int build_pipeline(
                  }, .num_vertex_attributes = 2},
         .rasterizer_state =
             {.fill_mode  = SDL_GPU_FILLMODE_FILL,
-                          .cull_mode  = SDL_GPU_CULLMODE_BACK,
-                          .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE},
+                          .cull_mode  = SDL_GPU_CULLMODE_NONE,
+                          .front_face = SDL_GPU_FRONTFACE_CLOCKWISE},
         .depth_stencil_state = {
                           .enable_depth_test   = true,
                           .enable_depth_write  = true,

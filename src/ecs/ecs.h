@@ -9,7 +9,7 @@
 #define MAX_ENTITIES 1024
 
 typedef struct {
-    vec3 colors[3];
+    float colors[3][4];
     float model[16];
     float view[16];
     float proj[16];
