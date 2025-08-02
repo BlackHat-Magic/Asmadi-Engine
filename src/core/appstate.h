@@ -17,6 +17,7 @@ typedef struct {
     SDL_GPUTexture* texture;
     SDL_GPUSampler* sampler;
     SDL_GPUTexture* depth_texture;
+    SDL_GPUTextureFormat swapchain_format;
 
     // view matrix
     mat4* view_matrix;

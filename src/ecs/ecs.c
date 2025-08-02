@@ -93,7 +93,7 @@ SDL_AppResult render_system(AppState* state) {
         // Recreate depth texture
         SDL_GPUTextureCreateInfo depth_info = {
             .type = SDL_GPU_TEXTURETYPE_2D,
-            .format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+            .format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
             .width = state->width,
             .height = state->height,
             .layer_count_or_depth = 1,

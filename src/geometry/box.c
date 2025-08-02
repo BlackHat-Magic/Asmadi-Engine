@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 #include "ecs/ecs.h"
-#include "geometry/common.h"
+#include "geometry/g_common.h"
 
 MeshComponent* create_box_mesh(
     float l, float w, float h, SDL_GPUDevice* device
