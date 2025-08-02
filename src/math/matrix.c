@@ -2,9 +2,6 @@
 
 #include <math.h>
 
-// Helper macro for mat4 indexing (column-major: m[col*4 + row])
-#define MAT4_IDX(row, col) ((col) * 4 + (row))
-
 // VEC2
 vec2 vec2_add(vec2 a, vec2 b) { return (vec2){a.x + b.x, a.y + b.y}; }
 vec2 vec2_sub(vec2 a, vec2 b) { return (vec2){a.x - b.x, a.y - b.y}; }
@@ -38,6 +35,68 @@ float vec3_dot(vec3 a, vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 vec3 vec3_cross(vec3 a, vec3 b) {
     return (vec3){a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z,
                   a.x * b.y - a.y * b.x};
+}
+
+// VEC4
+vec4 vec4_add(vec4 a, vec4 b) {return (vec4) {a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w};}
+vec4 vec4_sub(vec4 a, vec4 b) {return (vec4) {a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w};}
+vec4 vec4_scale(vec4 v, float s) { return (vec4){v.x * s, v.y * s, v.z * s, v.w * s}; }
+vec4 vec4_normalize(vec4 v) {
+    float len = sqrtf (v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w);
+    if (len > 0.0f) {
+        return vec4_scale (v, 1.0f / len);
+    }
+    return v;
+}
+float vec4_dot (vec4 a, vec4 b) {return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;}
+
+// Quaternion helpers
+vec4 quat_from_euler(vec3 euler) {
+    float cx = cosf(euler.x * 0.5f), sx = sinf(euler.x * 0.5f);
+    float cy = cosf(euler.y * 0.5f), sy = sinf(euler.y * 0.5f);
+    float cz = cosf(euler.z * 0.5f), sz = sinf(euler.z * 0.5f);
+    return (vec4){
+        cx * cy * cz + sx * sy * sz,  // w
+        sx * cy * cz - cx * sy * sz,  // x
+        cx * sy * cz + sx * cy * sz,  // y
+        cx * cy * sz - sx * sy * cz   // z
+    };
+}
+vec3 euler_from_quat(vec4 q) {
+    // Extract Euler angles (handle singularities)
+    float sinr_cosp = 2.0f * (q.w * q.x + q.y * q.z);
+    float cosr_cosp = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
+    float pitch = atan2f(sinr_cosp, cosr_cosp);
+
+    float sinp = 2.0f * (q.w * q.y - q.z * q.x);
+    float yaw;
+    if (fabsf(sinp) >= 1.0f) {
+        yaw = copysignf((float)M_PI / 2.0f, sinp);  // Gimbal lock case
+    } else {
+        yaw = asinf(sinp);
+    }
+
+    float siny_cosp = 2.0f * (q.w * q.z + q.x * q.y);
+    float cosy_cosp = 1.0f - 2.0f * (q.y * q.y + q.z * q.z);
+    float roll = atan2f(siny_cosp, cosy_cosp);
+
+    return (vec3){pitch, yaw, roll};
+}
+vec4 quat_multiply(vec4 a, vec4 b) {
+    return (vec4){
+        a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,  // w
+        a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,  // x
+        a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,  // y
+        a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w   // z
+    };
+}
+vec4 quat_conjugate(vec4 q) { return (vec4){q.w, -q.x, -q.y, -q.z}; }
+vec4 quat_normalize(vec4 q) {
+    float len = sqrtf(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
+    if (len > 0.0f) {
+        return (vec4){q.w / len, q.x / len, q.y / len, q.z / len};
+    }
+    return (vec4){1.0f, 0.0f, 0.0f, 0.0f};  // Identity quat
 }
 
 // MAT4
@@ -82,6 +141,35 @@ void mat4_rotate_z(mat4 m, float angle_rad) {
     rot[MAT4_IDX(0, 1)] = -s;
     rot[MAT4_IDX(1, 0)] = s;
     rot[MAT4_IDX(1, 1)] = c;
+    mat4_multiply(m, m, rot);
+}
+void mat4_rotate_quat(mat4 m, vec4 q) {
+    // Assumes q is normalized; convert quat to rotation matrix and post-multiply
+    mat4 rot;
+    float xx = q.x * q.x, xy = q.x * q.y, xz = q.x * q.z, xw = q.x * q.w;
+    float yy = q.y * q.y, yz = q.y * q.z, yw = q.y * q.w;
+    float zz = q.z * q.z, zw = q.z * q.w;
+
+    rot[MAT4_IDX(0, 0)] = 1.0f - 2.0f * (yy + zz);
+    rot[MAT4_IDX(0, 1)] = 2.0f * (xy - zw);
+    rot[MAT4_IDX(0, 2)] = 2.0f * (xz + yw);
+    rot[MAT4_IDX(0, 3)] = 0.0f;
+
+    rot[MAT4_IDX(1, 0)] = 2.0f * (xy + zw);
+    rot[MAT4_IDX(1, 1)] = 1.0f - 2.0f * (xx + zz);
+    rot[MAT4_IDX(1, 2)] = 2.0f * (yz - xw);
+    rot[MAT4_IDX(1, 3)] = 0.0f;
+
+    rot[MAT4_IDX(2, 0)] = 2.0f * (xz - yw);
+    rot[MAT4_IDX(2, 1)] = 2.0f * (yz + xw);
+    rot[MAT4_IDX(2, 2)] = 1.0f - 2.0f * (xx + yy);
+    rot[MAT4_IDX(2, 3)] = 0.0f;
+
+    rot[MAT4_IDX(3, 0)] = 0.0f;
+    rot[MAT4_IDX(3, 1)] = 0.0f;
+    rot[MAT4_IDX(3, 2)] = 0.0f;
+    rot[MAT4_IDX(3, 3)] = 1.0f;
+
     mat4_multiply(m, m, rot);
 }
 void mat4_scale(mat4 m, vec3 v) {
