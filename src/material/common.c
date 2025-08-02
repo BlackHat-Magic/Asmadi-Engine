@@ -52,10 +52,9 @@ SDL_GPUTexture* load_texture(SDL_GPUDevice* device, const char* bmp_file_path) {
     // note to self: don't forget to look at texture wrapping, texture
     // filtering, mipmaps https://learnopengl.com/Getting-started/Textures load
     // texture
-    
     // does the file exist
     if (!SDL_GetPathInfo(bmp_file_path, NULL)) {
-        SDL_Log ("Couldn't read file: %s", SDL_GetError ());
+        SDL_Log("Couldn't read file: %s", SDL_GetError());
         return NULL;
     }
 
@@ -184,10 +183,12 @@ static int build_pipeline(
                           .color_target_descriptions =
                     (SDL_GPUColorTargetDescription[]){
                         {.format = swapchain_format}
-                    }, },
+                    }, .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+                          },
         .primitive_type  = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
         .vertex_shader   = mat->vertex_shader,
         .fragment_shader = mat->fragment_shader,
+
         .vertex_input_state =
             {.vertex_buffer_descriptions =
                  (SDL_GPUVertexBufferDescription[]){
@@ -209,7 +210,7 @@ static int build_pipeline(
                  }, .num_vertex_attributes = 2},
         .rasterizer_state =
             {.fill_mode  = SDL_GPU_FILLMODE_FILL,
-                          .cull_mode  = SDL_GPU_CULLMODE_NONE,
+                          .cull_mode  = SDL_GPU_CULLMODE_BACK,
                           .front_face = SDL_GPU_FRONTFACE_CLOCKWISE},
         .depth_stencil_state = {
                           .enable_depth_test   = true,
@@ -223,6 +224,5 @@ static int build_pipeline(
         SDL_Log("Failed to create material pipeline: %s", SDL_GetError());
         return 1;
     }
-
     return 0;
 }

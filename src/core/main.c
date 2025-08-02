@@ -126,40 +126,54 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     }
 
     // create box entity
-    Entity box              = create_entity();
+    vec3 transforms[] = {
+        {0.0f, 0.0f, 0.0f},
+        {2.0f, 0.0f, 0.0f},
+        {3.0f, 4.0f, 0.0f},
+        {0.0f, 0.0f, 5.0f},
+        {-2.0f, 0.0f, -3.0f},
+        {-4.0f, -5.0f, 1.0f},
+        {0.0f, 0.0f, 2.0f},
+        {0.0f, 3.0f, 0.0f},
+        {0.0f, 4.0f, 5.0f},
+        {-2.0f, 0.0f, 0.0f}
+    };
+    for (int i = 0; i < 10; i++) {
+        Entity box              = create_entity();
 
-    // create box mesh
-    MeshComponent* box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
-    if (box_mesh == NULL)
-        return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
-    add_mesh(box, box_mesh);
+        // create box mesh
+        MeshComponent* box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
+        if (box_mesh == NULL)
+            return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
+        add_mesh(box, box_mesh);
 
-    // create box material
-    MaterialComponent box_material =
-        create_basic_material((vec3){0.75f, 0.0f, 0.0f}, state->device);
+        // create box material
+        MaterialComponent box_material =
+            create_basic_material((vec3){0.75f, 0.0f, 0.0f}, state->device);
 
-    // box vertex shader
-    int vert_failed = set_vertex_shader(
-        state->device, &box_material, "shaders/triangle.vert.spv",
-        SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
-    );
-    if (vert_failed)
-        return SDL_APP_FAILURE;  // logging handled in set_vertex_shader
+        // box vertex shader
+        int vert_failed = set_vertex_shader(
+            state->device, &box_material, "shaders/triangle.vert.spv",
+            SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
+        );
+        if (vert_failed)
+            return SDL_APP_FAILURE;  // logging handled in set_vertex_shader
 
-        // box fragment shader
-    int frag_failed = set_fragment_shader(
-        state->device, &box_material, "shaders/triangle.frag.spv",
-        SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
-    );
-    if (frag_failed)
-        return SDL_APP_FAILURE;  // logging handled in set_fragment_shader
+            // box fragment shader
+        int frag_failed = set_fragment_shader(
+            state->device, &box_material, "shaders/triangle.frag.spv",
+            SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
+        );
+        if (frag_failed)
+            return SDL_APP_FAILURE;  // logging handled in set_fragment_shader
 
-    // apply box material
-    add_material(box, box_material);
-    add_transform(
-        box, (vec3){0.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f},
-        (vec3){1.0f, 1.0f, 1.0f}
-    );
+        // apply box material
+        add_material(box, box_material);
+        add_transform(
+            box, transforms[i], (vec3){0.0f, 0.0f, 0.0f},
+            (vec3){1.0f, 1.0f, 1.0f}
+        );
+    }
 
     // view matrix
     mat4* view = (mat4*)malloc(sizeof(mat4));
