@@ -1,8 +1,9 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 4.0)
 project(SpacePirates LANGUAGES C)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(SDL3 REQUIRED)
 find_package(SDL3_image REQUIRED) # load textures
@@ -37,7 +38,15 @@ if(COMPILE_SHADERS)
 endif()
 
 # executable
-add_executable(space-pirates src/main.c src/matrix.c)
+add_executable(space-pirates
+    src/core/main.c
+    src/ecs/ecs.c
+    src/geometry/common.c
+    src/geometry/box.c
+    src/material/common.c
+    src/material/basic_material.c
+    src/math/matrix.c
+)
 
 # link libraries
 target_link_libraries(space-pirates

@@ -1,5 +1,7 @@
 #include "matrix.h"
 
+#include <math.h>
+
 // Helper macro for mat4 indexing (column-major: m[col*4 + row])
 #define MAT4_IDX(row, col) ((col) * 4 + (row))
 
@@ -119,8 +121,8 @@ void mat4_perspective(
 void mat4_look_at(mat4 m, vec3 eye, vec3 center, vec3 up) {
     vec3 f = vec3_normalize(vec3_sub(center, eye));
     vec3 s = vec3_normalize(vec3_cross(f, up));  // Changed order
-    vec3 u = vec3_cross(s, f);                    // Changed order
-    
+    vec3 u = vec3_cross(s, f);                   // Changed order
+
     mat4_identity(m);
     m[MAT4_IDX(0, 0)] = s.x;
     m[MAT4_IDX(0, 1)] = u.x;
