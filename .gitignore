@@ -3,3 +3,5 @@ build/
 .vscode/
 **/new.*
 .cache/
+create_dump.sh
+project_dump.md
