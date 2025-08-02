@@ -5,6 +5,7 @@
 #include <SDL3/SDL_gpu.h>
 
 #include "ecs/ecs.h"
+#include <math.h>
 
 TransformComponent transforms[MAX_ENTITIES];
 MeshComponent* meshes[MAX_ENTITIES] = {NULL};
@@ -82,6 +83,44 @@ SDL_AppResult render_system(AppState* state) {
         return SDL_APP_FAILURE;
     }
 
+    // resize check
+    if (state->dwidth != state->width || state->dheight != state->height) {
+        // Release old depth texture
+        if (state->depth_texture) {
+            SDL_ReleaseGPUTexture(state->device, state->depth_texture);
+        }
+
+        // Recreate depth texture
+        SDL_GPUTextureCreateInfo depth_info = {
+            .type = SDL_GPU_TEXTURETYPE_2D,
+            .format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+            .width = state->width,
+            .height = state->height,
+            .layer_count_or_depth = 1,
+            .num_levels = 1,
+            .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET
+        };
+        state->depth_texture = SDL_CreateGPUTexture(state->device, &depth_info);
+        if (state->depth_texture == NULL) {
+            SDL_Log("Failed to recreate depth texture: %s", SDL_GetError());
+            SDL_SubmitGPUCommandBuffer(cmd);
+            return SDL_APP_FAILURE;
+        }
+
+        // Update projection matrix
+        mat4_perspective(
+            *state->proj_matrix,
+            state->fov * (float)M_PI / 180.0f,
+            (float)state->width / (float)state->height,
+            0.01f,
+            1000.0f
+        );
+
+        // Update tracked dimensions
+        state->dwidth = state->width;
+        state->dheight = state->height;
+    }
+
     // color target info
     SDL_GPUColorTargetInfo color_target_info = {
         .texture     = swapchain,
@@ -102,6 +141,15 @@ SDL_AppResult render_system(AppState* state) {
     // begin render pass
     SDL_GPURenderPass* pass =
         SDL_BeginGPURenderPass(cmd, &color_target_info, 1, &depth_target_info);
+    SDL_GPUViewport viewport = {
+        .x = 0.0f,
+        .y = 0.0f,
+        .w = (float) state->width,
+        .h = (float) state->height,
+        .min_depth = 0.0f,
+        .max_depth = 1.0f
+    };
+    SDL_SetGPUViewport(pass, &viewport);
 
     for (Entity e = 0; e < MAX_ENTITIES; e++) {
         if (!entity_active[e] || !meshes[e]->vertex_buffer)

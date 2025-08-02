@@ -8,6 +8,9 @@ typedef struct {
     SDL_Window* window;
     Uint32 width;
     Uint32 height;
+    Uint32 dwidth;
+    Uint32 dheight;
+    float fov;
 
     // GPU stuff
     SDL_GPUDevice* device;

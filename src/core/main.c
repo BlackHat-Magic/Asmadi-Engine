@@ -59,6 +59,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     AppState* state = (AppState*)calloc(1, sizeof(AppState));
     state->width    = STARTING_WIDTH;
     state->height   = STARTING_HEIGHT;
+    state->fov      = STARTING_FOV;
 
     // initialize SDL
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -103,6 +104,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         SDL_Log("Failed to create depth texture: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+    state->dwidth = state->width;
+    state->dheight = state->height;
 
      // load texture
     state->texture = load_texture(state->device, "assets/test.png");
