@@ -1,4 +1,4 @@
-#include "common.h"
+#include "geometry/g_common.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_gpu.h>

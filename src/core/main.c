@@ -17,7 +17,7 @@
 #include "ecs/ecs.h"
 #include "geometry/box.h"
 #include "material/basic_material.h"
-#include "material/common.h"
+#include "material/m_common.h"
 #include "math/matrix.h"
 
 #define STARTING_WIDTH 640
