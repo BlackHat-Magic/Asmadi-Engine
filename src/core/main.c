@@ -88,11 +88,16 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         SDL_Log("Couldn't claim window for GPU device: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+    state->swapchain_format = SDL_GetGPUSwapchainTextureFormat(state->device, state->window);
+    if (state->swapchain_format == SDL_GPU_TEXTUREFORMAT_INVALID) {
+        SDL_Log ("Failed to get swapchain texture format: %s", SDL_GetError ());
+        return SDL_APP_FAILURE;
+    }
 
     // depth texture
     SDL_GPUTextureCreateInfo depth_info = {
         .type                 = SDL_GPU_TEXTURETYPE_2D,
-        .format               = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+        .format               = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
         .width                = state->width,
         .height               = state->height,
         .layer_count_or_depth = 1,
@@ -157,15 +162,15 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         // box vertex shader
         int vert_failed = set_vertex_shader(
             state->device, &box_material, "shaders/triangle.vert.spv",
-            SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
+            state->swapchain_format
         );
         if (vert_failed)
             return SDL_APP_FAILURE;  // logging handled in set_vertex_shader
 
-            // box fragment shader
+        // box fragment shader
         int frag_failed = set_fragment_shader(
             state->device, &box_material, "shaders/triangle.frag.spv",
-            SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
+            state->swapchain_format
         );
         if (frag_failed)
             return SDL_APP_FAILURE;  // logging handled in set_fragment_shader

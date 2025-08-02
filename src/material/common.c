@@ -183,7 +183,7 @@ static int build_pipeline(
                           .color_target_descriptions =
                     (SDL_GPUColorTargetDescription[]){
                         {.format = swapchain_format}
-                    }, .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+                    }, .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
                           },
         .primitive_type  = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
         .vertex_shader   = mat->vertex_shader,
