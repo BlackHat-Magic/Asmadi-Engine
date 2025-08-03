@@ -95,7 +95,7 @@ void fps_controller_event_system(AppState* state, SDL_Event* event) {
 
         switch (event->type) {
             case SDL_EVENT_MOUSE_MOTION: {
-                float delta_yaw = -event->motion.xrel * fps_controllers[e].mouse_sense;
+                float delta_yaw = event->motion.xrel * fps_controllers[e].mouse_sense;
                 float delta_pitch = event->motion.yrel * fps_controllers[e].mouse_sense;
 
                 // Global yaw around world up
@@ -139,9 +139,9 @@ void fps_controller_update_system(AppState* state, float dt) {
         TransformComponent* trans = &transforms[e];
 
         // Directions (note: up uses {0.0f, -1.0f, 0.0f} as in original code; fix if needed)
-        vec3 forward = vec3_rotate(trans->rotation, (vec3){0.0f, 0.0f, -1.0f});
+        vec3 forward = vec3_rotate(trans->rotation, (vec3){0.0f, 0.0f, 1.0f});
         vec3 right = vec3_rotate(trans->rotation, (vec3){1.0f, 0.0f, 0.0f});
-        vec3 up = vec3_rotate(trans->rotation, (vec3){0.0f, -1.0f, 0.0f});
+        vec3 up = vec3_rotate(trans->rotation, (vec3){0.0f, 1.0f, 0.0f});
 
         int numkeys;
         const bool* key_state = SDL_GetKeyboardState(&numkeys);
@@ -267,6 +267,7 @@ SDL_AppResult render_system(AppState* state) {
         if (billboards[e]) {
             mat4_translate(model, trans->position);
             mat4_rotate_quat(model, cam_trans->rotation);
+            mat4_rotate_y(model, (float)M_PI);
             mat4_scale(model, trans->scale);
         } else {
             mat4_translate(model, transforms[e].position);

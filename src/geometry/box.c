@@ -14,28 +14,28 @@ MeshComponent* create_box_mesh(
 
     float vertices[] = {
         // front (-z)
-        -wx, -hy, -lz, 0.0f, 0.0f, wx, -hy, -lz, 1.0f, 0.0f, wx, hy, -lz, 1.0f,
-        1.0f, -wx, hy, -lz, 0.0f, 1.0f,
+        -wx, -hy, -lz, 0.0f, 1.0f, wx, -hy, -lz, 1.0f, 1.0f, wx, hy, -lz, 1.0f,
+        0.0f, -wx, hy, -lz, 0.0f, 0.0f,
 
         // back
-        -wx, -hy, lz, 0.0f, 0.0f, wx, -hy, lz, 1.0f, 0.0f, wx, hy, lz, 1.0f,
-        1.0f, -wx, hy, lz, 0.0f, 1.0f,
-
-        // Left (x = -wx)
-        -wx, hy, -lz, 1.0f, 1.0f, -wx, hy, lz, 1.0f, 0.0f, -wx, -hy, lz, 0.0f,
-        0.0f, -wx, -hy, -lz, 0.0f, 1.0f,
-
-        // Right (x = wx)
-        wx, hy, -lz, 1.0f, 0.0f, wx, -hy, -lz, 0.0f, 0.0f, wx, -hy, lz, 0.0f,
-        1.0f, wx, hy, lz, 1.0f, 1.0f,
-
-        // Top (y = hy)
-        -wx, hy, -lz, 0.0f, 1.0f, wx, hy, -lz, 1.0f, 1.0f, wx, hy, lz, 1.0f,
+        -wx, -hy, lz, 0.0f, 1.0f, wx, -hy, lz, 1.0f, 1.0f, wx, hy, lz, 1.0f,
         0.0f, -wx, hy, lz, 0.0f, 0.0f,
 
+        // Left (x = -wx)
+        -wx, hy, -lz, 1.0f, 0.0f, -wx, hy, lz, 1.0f, 1.0f, -wx, -hy, lz, 0.0f,
+        1.0f, -wx, -hy, -lz, 0.0f, 0.0f,
+
+        // Right (x = wx)
+        wx, hy, -lz, 1.0f, 1.0f, wx, -hy, -lz, 0.0f, 1.0f, wx, -hy, lz, 0.0f,
+        0.0f, wx, hy, lz, 1.0f, 0.0f,
+
+        // Top (y = hy)
+        -wx, hy, -lz, 0.0f, 0.0f, wx, hy, -lz, 1.0f, 0.0f, wx, hy, lz, 1.0f,
+        1.0f, -wx, hy, lz, 0.0f, 1.0f,
+
         // Bottom (y = -hy)
-        -wx, -hy, -lz, 0.0f, 0.0f, -wx, -hy, lz, 0.0f, 1.0f, wx, -hy, lz, 1.0f,
-        1.0f, wx, -hy, -lz, 1.0f, 0.0f
+        -wx, -hy, -lz, 0.0f, 1.0f, -wx, -hy, lz, 0.0f, 0.0f, wx, -hy, lz, 1.0f,
+        0.0f, wx, -hy, -lz, 1.0f, 1.0f
     };
 
     // 36 indices: 6 per face (2 triangles each), clockwise winding

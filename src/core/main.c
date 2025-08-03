@@ -209,7 +209,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
     // camera
     Entity camera = create_entity();
-    add_transform(camera, (vec3){0.0f, 0.0f, -2.0f}, (vec3){0.0f, (float)M_PI, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+    add_transform(camera, (vec3){0.0f, 0.0f, -2.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
     add_camera(camera, STARTING_FOV, 0.01f, 1000.0f);
     add_fps_controller (camera, MOUSE_SENSE, MOVEMENT_SPEED);
     state->camera_entity = camera;

@@ -221,10 +221,10 @@ void mat4_perspective(
     float focal        = 1.0f / tan_half_fov;
     mat4_identity(m);
     m[MAT4_IDX(0, 0)] = focal / aspect;
-    m[MAT4_IDX(1, 1)] = -focal;
-    m[MAT4_IDX(2, 2)] = -far / (far - near);
+    m[MAT4_IDX(1, 1)] = focal;
+    m[MAT4_IDX(2, 2)] = far / (far - near);
     m[MAT4_IDX(2, 3)] = -(far * near) / (far - near);
-    m[MAT4_IDX(3, 2)] = -1.0f;
+    m[MAT4_IDX(3, 2)] = 1.0f;
     m[MAT4_IDX(3, 3)] = 0.0f;
 }
 void mat4_look_at(mat4 m, vec3 eye, vec3 center, vec3 up) {
