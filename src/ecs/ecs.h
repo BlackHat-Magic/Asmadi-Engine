@@ -39,6 +39,8 @@ typedef struct {
     SDL_GPUGraphicsPipeline* pipeline;
 } MaterialComponent;
 
+// TODO: make camera able to render to arbitrary texture
+// useful for, e.g., portals, reflections, etc.
 typedef struct {
     float fov;
     float near_clip;
