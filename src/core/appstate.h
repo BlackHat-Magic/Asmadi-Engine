@@ -27,9 +27,7 @@ typedef struct {
 
     // camera stuff
     vec3* camera_pos;
-    float camera_yaw;
-    float camera_pitch;
-    float camera_roll;
+    vec4* camera_rotation;
 
     // time stuff
     Uint64 last_time;

@@ -12,7 +12,7 @@ typedef struct {
 } vec3;
 
 typedef struct {
-    float x, y, z, w;
+    float w, x, y, z;
 } vec4;
 
 typedef float mat4[16];
@@ -42,6 +42,9 @@ vec3 euler_from_quat(vec4 q);
 vec4 quat_multiply(vec4 a, vec4 b); // compose rotations
 vec4 quat_conjugate(vec4 q);
 vec4 quat_normalize (vec4 q);
+vec3 quat_rotate(vec4 q, vec3 v); // rotate a vector with a quaternion
+vec4 quat_from_axis_angle(vec3 axis, float angle);
+vec3 vec3_rotate(vec4 q, vec3 v);
 
 void mat4_identity(mat4 m);
 void mat4_translate(mat4 m, vec3 v);
