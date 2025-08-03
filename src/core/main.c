@@ -17,6 +17,7 @@
 #include "core/appstate.h"
 #include "ecs/ecs.h"
 #include "geometry/box.h"
+#include "geometry/plane.h"
 #include "material/basic_material.h"
 #include "material/m_common.h"
 #include "math/matrix.h"
@@ -180,6 +181,31 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
             (vec3){1.0f, 1.0f, 1.0f}
         );
     }
+
+    // billboard
+    Entity billboard = create_entity();
+    MeshComponent* billboard_mesh = create_plane_mesh(1.0f, 1.0f, 1, 1, state->device);
+    if (billboard_mesh == NULL) return SDL_APP_FAILURE; // logging handled inside function
+    add_mesh(billboard, billboard_mesh);
+
+    // billboard material
+    MaterialComponent billboard_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, state->device);
+    int vert_failed = set_vertex_shader(state->device, &billboard_material, "shaders/triangle.vert.spv", state->swapchain_format);
+    if (vert_failed) return SDL_APP_FAILURE;
+    int frag_failed = set_fragment_shader (state->device, &billboard_material, "shaders/triangle.frag.spv", state->swapchain_format);
+    if (frag_failed) return SDL_APP_FAILURE;
+    billboard_material.texture = load_texture(state->device, "assets/test.bmp");
+    if (billboard_material.texture == NULL) {
+        SDL_Log ("Unable to load billboard texture: %s", SDL_GetError ());
+        return SDL_APP_FAILURE;
+    }
+    add_material(billboard, billboard_material);
+
+    // billboard transform
+    add_transform(billboard, (vec3){7.0f, 7.0f, 7.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // add billboard flag
+    add_billboard(billboard);
 
     // camera
     Entity camera = create_entity();

@@ -13,6 +13,7 @@ MeshComponent* meshes[MAX_ENTITIES] = {NULL};
 MaterialComponent materials[MAX_ENTITIES];
 CameraComponent cameras[MAX_ENTITIES];
 FpsCameraControllerComponent fps_controllers[MAX_ENTITIES] = {0};
+BillboardComponent billboards[MAX_ENTITIES] = {0};
 uint8_t entity_active[MAX_ENTITIES] = {0};
 
 Entity create_entity() {
@@ -41,6 +42,7 @@ void destroy_entity(AppState* state, Entity e) {
     if (meshes[e]) free(meshes[e]);
     memset(&materials[e], 0, sizeof(MaterialComponent));
     memset (&cameras[e], 0, sizeof (CameraComponent));
+    billboards[e] = 0;
 
     if (materials[e].pipeline)
         SDL_ReleaseGPUGraphicsPipeline(state->device, materials[e].pipeline);
@@ -78,6 +80,11 @@ void add_fps_controller (Entity e, float sense, float speed) {
     if (e >= MAX_ENTITIES || !entity_active[e]) return;
     fps_controllers[e].mouse_sense = sense;
     fps_controllers[e].move_speed = speed;
+}
+
+void add_billboard(Entity e) {
+    if (e >= MAX_ENTITIES || !entity_active[e]) return;
+    billboards[e] = 1;
 }
 
 void fps_controller_event_system(AppState* state, SDL_Event* event) {
@@ -255,9 +262,17 @@ SDL_AppResult render_system(AppState* state) {
 
         mat4 model;
         mat4_identity(model);
-        mat4_translate(model, transforms[e].position);
-        mat4_rotate_quat(model, transforms[e].rotation);
-        mat4_scale(model, transforms[e].scale);
+        TransformComponent* trans = &transforms[e];
+        TransformComponent* cam_trans = &transforms[cam];
+        if (billboards[e]) {
+            mat4_translate(model, trans->position);
+            mat4_rotate_quat(model, cam_trans->rotation);
+            mat4_scale(model, trans->scale);
+        } else {
+            mat4_translate(model, transforms[e].position);
+            mat4_rotate_quat(model, transforms[e].rotation);
+            mat4_scale(model, transforms[e].scale);
+        }
 
         UBOData ubo = {0};
         memcpy(ubo.model, model, sizeof(mat4));

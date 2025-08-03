@@ -43,6 +43,7 @@ add_executable(space-pirates
     src/ecs/ecs.c
     src/geometry/g_common.c
     src/geometry/box.c
+    src/geometry/plane.c
     src/material/m_common.c
     src/material/basic_material.c
     src/math/matrix.c
