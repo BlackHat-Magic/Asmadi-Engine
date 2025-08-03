@@ -98,6 +98,27 @@ vec4 quat_normalize(vec4 q) {
     }
     return (vec4){1.0f, 0.0f, 0.0f, 0.0f};  // Identity quat
 }
+vec3 quat_rotate(vec4 q, vec3 v) {
+    vec4 pv = {0.0f, v.x, v.y, v.z};
+    vec4 conj_q = quat_conjugate(q);
+    vec4 temp = quat_multiply(q, pv);
+    vec4 result = quat_multiply(temp, conj_q);
+    return (vec3){result.x, result.y, result.z};
+}
+vec4 quat_from_axis_angle(vec3 axis, float angle) {
+    float half_angle = angle * 0.5f;
+    float c = cosf(half_angle);
+    float s = sinf(half_angle);
+    axis = vec3_normalize(axis);
+    return (vec4){c, axis.x * s, axis.y * s, axis.z * s};
+}
+vec3 vec3_rotate(vec4 q, vec3 v) {
+    vec4 vq = {0.0f, v.x, v.y, v.z};
+    vec4 conj_q = quat_conjugate(q);
+    vec4 temp = quat_multiply(q, vq);
+    vec4 result = quat_multiply(temp, conj_q);
+    return (vec3){result.x, result.y, result.z};
+}
 
 // MAT4
 void mat4_identity(mat4 m) {

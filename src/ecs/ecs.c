@@ -6,10 +6,12 @@
 
 #include "ecs/ecs.h"
 #include <math.h>
+#include "math/matrix.h"
 
 TransformComponent transforms[MAX_ENTITIES];
 MeshComponent* meshes[MAX_ENTITIES] = {NULL};
 MaterialComponent materials[MAX_ENTITIES];
+CameraComponent cameras[MAX_ENTITIES];
 uint8_t entity_active[MAX_ENTITIES] = {0};
 
 Entity create_entity() {
@@ -35,9 +37,9 @@ void destroy_entity(AppState* state, Entity e) {
 
     // cleanup resources
     memset(&transforms[e], 0, sizeof(TransformComponent));
-    // memset(meshes[e], 0, sizeof(MeshComponent));
     if (meshes[e]) free(meshes[e]);
     memset(&materials[e], 0, sizeof(MaterialComponent));
+    memset (&cameras[e], 0, sizeof (CameraComponent));
 
     if (materials[e].pipeline)
         SDL_ReleaseGPUGraphicsPipeline(state->device, materials[e].pipeline);
@@ -49,12 +51,9 @@ void destroy_entity(AppState* state, Entity e) {
 
 void add_transform(Entity e, vec3 pos, vec3 rot, vec3 scale) {
     if (e >= MAX_ENTITIES || !entity_active[e]) return;
-    mat4_identity(transforms[e].model);
-    mat4_translate(transforms[e].model, pos);
-    mat4_rotate_x(transforms[e].model, rot.x);
-    mat4_rotate_y(transforms[e].model, rot.y);
-    mat4_rotate_z(transforms[e].model, rot.z);
-    mat4_scale(transforms[e].model, scale);
+    transforms[e].position = pos;
+    transforms[e].rotation = quat_from_euler(rot);
+    transforms[e].scale = scale;
 }
 
 void add_mesh(Entity e, MeshComponent* mesh) {
@@ -65,6 +64,13 @@ void add_mesh(Entity e, MeshComponent* mesh) {
 void add_material(Entity e, MaterialComponent material) {
     if (e >= MAX_ENTITIES || !entity_active[e]) return;
     materials[e] = material;
+}
+
+void add_camera(Entity e, float fov, float near_clip, float far_clip) {
+    if (e >= MAX_ENTITIES || !entity_active[e]) return;
+    cameras[e].fov = fov;
+    cameras[e].near_clip = near_clip;
+    cameras[e].far_clip = far_clip;
 }
 
 SDL_AppResult render_system(AppState* state) {
@@ -107,19 +113,33 @@ SDL_AppResult render_system(AppState* state) {
             return SDL_APP_FAILURE;
         }
 
-        // Update projection matrix
-        mat4_perspective(
-            *state->proj_matrix,
-            state->fov * (float)M_PI / 180.0f,
-            (float)state->width / (float)state->height,
-            0.01f,
-            1000.0f
-        );
-
         // Update tracked dimensions
         state->dwidth = state->width;
         state->dheight = state->height;
     }
+
+    Entity cam = state->camera_entity;
+    if (cam == (Entity)-1 || !entity_active[cam]) {
+        SDL_Log ("No active camera entity");
+        SDL_SubmitGPUCommandBuffer (cmd);
+        return SDL_APP_CONTINUE;
+    }
+    TransformComponent* cam_trans = &transforms[cam];
+    CameraComponent* cam_comp = &cameras[cam];
+
+    // I don't think we can cache this one...
+    // so recomputing is probably fine, I GUESS...
+    mat4 view;
+    mat4_identity(view);
+    vec4 conj_rot = quat_conjugate(cam_trans->rotation);
+    mat4_rotate_quat(view, conj_rot);
+    mat4_translate(view, vec3_scale(cam_trans->position, -1.0f));
+
+    // TODO: cache projection matrix between frames
+    // it only changes on window resize but gets recalculated every frame
+    mat4 proj;
+    float aspect = (float)state->width / (float)state->height;
+    mat4_perspective(proj, cam_comp->fov * (float)M_PI / 180.0f, aspect, cam_comp->near_clip, cam_comp->far_clip);
 
     // color target info
     SDL_GPUColorTargetInfo color_target_info = {
@@ -152,13 +172,19 @@ SDL_AppResult render_system(AppState* state) {
     SDL_SetGPUViewport(pass, &viewport);
 
     for (Entity e = 0; e < MAX_ENTITIES; e++) {
-        if (!entity_active[e] || !meshes[e]->vertex_buffer)
+        if (!entity_active[e] || !meshes[e] || !meshes[e]->vertex_buffer)
             continue;  // skip if no mesh/inactive
 
+        mat4 model;
+        mat4_identity(model);
+        mat4_translate(model, transforms[e].position);
+        mat4_rotate_quat(model, transforms[e].rotation);
+        mat4_scale(model, transforms[e].scale);
+
         UBOData ubo = {0};
-        memcpy(ubo.model, transforms[e].model, sizeof(mat4));
-        memcpy(ubo.view, *state->view_matrix, sizeof(mat4));
-        memcpy(ubo.proj, *state->proj_matrix, sizeof(mat4));
+        memcpy(ubo.model, model, sizeof(mat4));
+        memcpy(ubo.view, view, sizeof(mat4));
+        memcpy(ubo.proj, proj, sizeof(mat4));
         // Colors: use material.color (shader uses colors[3])
         for (int i = 0; i < 3; i++) {
             ubo.colors[i][0] = materials[e].color.x;

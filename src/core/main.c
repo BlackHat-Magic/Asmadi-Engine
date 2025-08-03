@@ -2,6 +2,7 @@
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_keycode.h>
+#include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_timer.h>
 #define SDL_MAIN_USE_CALLBACKS 1
@@ -28,18 +29,41 @@
 
 SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
     AppState* state = (AppState*)appstate;
+
+    Entity cam = state->camera_entity;
+    if (cam == (Entity)-1 || !entity_active[cam]) return SDL_APP_CONTINUE;
+    TransformComponent* cam_trans = &transforms[cam];
+
     switch (event->type) {
         case SDL_EVENT_QUIT:
             state->quit = true;
             break;
         case SDL_EVENT_MOUSE_MOTION:
-            state->camera_yaw -= event->motion.xrel * MOUSE_SENSE;
-            state->camera_pitch += event->motion.yrel * MOUSE_SENSE;
-            // prevent gimbal lock
-            if (state->camera_pitch > (float)M_PI * 0.49f) {
-                state->camera_pitch = (float)M_PI * 0.49f;
-            } else if (state->camera_pitch < (float)M_PI * -0.49f) {
-                state->camera_pitch = (float)M_PI * -0.49f;
+            float delta_yaw = -event->motion.xrel * MOUSE_SENSE;
+            float delta_pitch = event->motion.yrel * MOUSE_SENSE;
+
+            // Global yaw around world up (keeps level)
+            vec4 dq_yaw = quat_from_axis_angle((vec3){0.0f, 1.0f, 0.0f}, delta_yaw);
+            cam_trans->rotation = quat_multiply(dq_yaw, cam_trans->rotation);
+
+            // Local pitch around horizontal right axis (cross(forward, world_up))
+            vec3 forward = vec3_rotate(cam_trans->rotation, (vec3){0.0f, 0.0f, -1.0f});
+            vec3 right = vec3_normalize(vec3_cross(forward, (vec3){0.0f, 1.0f, 0.0f}));
+            vec4 dq_pitch = quat_from_axis_angle(right, delta_pitch);
+            cam_trans->rotation = quat_multiply(dq_pitch, cam_trans->rotation);
+
+            // Normalize total rotation
+            cam_trans->rotation = quat_normalize(cam_trans->rotation);
+
+            // Clamp pitch
+            forward = vec3_rotate(cam_trans->rotation, (vec3){0.0f, 0.0f, -1.0f});
+            float curr_pitch = asinf(forward.y);
+            if (curr_pitch > (float)M_PI * 0.49f || curr_pitch < -(float)M_PI * 0.49f) {
+                float clamped_pitch = curr_pitch;
+                if (clamped_pitch > (float)M_PI * 0.49f) clamped_pitch = (float)M_PI * 0.49f;
+                if (clamped_pitch < -(float)M_PI * 0.49f) clamped_pitch = -(float)M_PI * 0.49f;
+                float curr_yaw = atan2f(forward.x, forward.z) + (float)M_PI;
+                cam_trans->rotation = quat_from_euler((vec3){clamped_pitch, curr_yaw, 0.0f});
             }
             break;
         case SDL_EVENT_KEY_DOWN:
@@ -59,7 +83,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     AppState* state = (AppState*)calloc(1, sizeof(AppState));
     state->width    = STARTING_WIDTH;
     state->height   = STARTING_HEIGHT;
-    state->fov      = STARTING_FOV;
+    state->camera_entity      = (Entity)-1;
 
     // initialize SDL
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -183,26 +207,11 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         );
     }
 
-    // view matrix
-    mat4* view = (mat4*)malloc(sizeof(mat4));
-    mat4_identity(*view);
-    state->view_matrix = view;
-
-    // perspective matrix
-    mat4* proj = (mat4*)malloc(sizeof(mat4));
-    mat4_perspective(
-        *proj, STARTING_FOV * (float)M_PI / 180.0f,
-        (float)STARTING_WIDTH / (float)STARTING_HEIGHT, 0.01f, 1000.0f
-    );
-    state->proj_matrix = proj;
-
     // camera
-    vec3* camera_pos    = (vec3*)malloc(sizeof(vec3));
-    *camera_pos         = (vec3){0.0f, 0.0f, -2.0f};
-    state->camera_pos   = camera_pos;
-    state->camera_yaw   = M_PI;
-    state->camera_pitch = 0.0f;
-    state->camera_roll  = 0.0f;
+    Entity camera = create_entity();
+    add_transform(camera, (vec3){0.0f, 0.0f, -2.0f}, (vec3){0.0f, (float)M_PI, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+    add_camera(camera, STARTING_FOV, 0.01f, 1000.0f);
+    state->camera_entity = camera;
     SDL_SetWindowRelativeMouseMode(state->window, true);
 
     state->last_time = SDL_GetPerformanceCounter();
@@ -215,30 +224,22 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     AppState* state = (AppState*)appstate;
     if (state->quit) return SDL_APP_SUCCESS;
 
+    // TODO: handle no camera
+    Entity cam = state->camera_entity;
+    if (cam == (Entity)-1) return SDL_APP_CONTINUE;
+    TransformComponent* cam_trans = &transforms[cam];
+
     // dt
     const Uint64 now = SDL_GetPerformanceCounter();
-
     float dt = (float)(now - state->last_time) /
                (float)(SDL_GetPerformanceFrequency());
     state->last_time = now;
 
-    // rotation
-    // mat4_rotate_x(*state->model_matrix, dt / 5.0f);
-    // mat4_rotate_y(*state->model_matrix, dt / 3.0f);
-
     // camera forward vector
-    vec3 world_up = {0.0f, 1.0f, 0.0f};
-
-    vec3 camera_forward = vec3_normalize(
-        (vec3){-sinf(state->camera_yaw) * cosf(state->camera_pitch),
-               sinf(state->camera_pitch),
-               -cosf(state->camera_yaw) * cosf(state->camera_pitch)}
-    );
-
-    vec3 camera_right = vec3_normalize(vec3_cross(camera_forward, world_up));
-    vec3 camera_up    = vec3_cross(
-        camera_forward, camera_right
-    ); /* now guaranteed orthogonal */
+    vec3 camera_forward = quat_rotate(cam_trans->rotation, (vec3){0.0f, 0.0f, -1.0f});
+    vec3 camera_right = quat_rotate(cam_trans->rotation, (vec3){1.0f, 0.0f, 0.0f});
+    vec3 camera_up = quat_rotate(cam_trans->rotation, (vec3){0.0f, -1.0f, 0.0f});
+    // TODO: fix camera_up being wrong
 
     // movement
     int numkeys;
@@ -251,13 +252,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     if (key_state[SDL_SCANCODE_SPACE]) motion = vec3_add(motion, camera_up);
     motion             = vec3_normalize(motion);
     motion             = vec3_scale(motion, dt * MOVEMENT_SPEED);
-    *state->camera_pos = vec3_add(*state->camera_pos, motion);
-
-    // look
-    mat4_identity(*state->view_matrix);
-    mat4_rotate_x(*state->view_matrix, -state->camera_pitch);
-    mat4_rotate_y(*state->view_matrix, -state->camera_yaw);
-    mat4_translate(*state->view_matrix, vec3_scale(*state->camera_pos, -1.0f));
+    cam_trans->position = vec3_add(cam_trans->position, motion);
 
     render_system(state);
 
@@ -271,12 +266,6 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result) {
     }
     if (state->sampler) {
         SDL_ReleaseGPUSampler(state->device, state->sampler);
-    }
-    if (state->view_matrix) {
-        free(state->view_matrix);
-    }
-    if (state->proj_matrix) {
-        free(state->proj_matrix);
     }
     if (state->depth_texture) {
         SDL_ReleaseGPUTexture(state->device, state->depth_texture);
