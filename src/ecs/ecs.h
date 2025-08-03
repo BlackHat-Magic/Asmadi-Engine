@@ -18,7 +18,9 @@ typedef struct {
 typedef uint32_t Entity;
 
 typedef struct {
-    mat4 model;
+    vec3 position;
+    vec4 rotation; // quat
+    vec3 scale;
 } TransformComponent;
 
 typedef struct {
@@ -37,12 +39,19 @@ typedef struct {
     SDL_GPUGraphicsPipeline* pipeline;
 } MaterialComponent;
 
+typedef struct {
+    float fov;
+    float near_clip;
+    float far_clip;
+} CameraComponent;
+
 // TODO: colliders
 
 // ECS storage arrays per component type (sparse; use entity as index)
 extern TransformComponent transforms[MAX_ENTITIES];
 extern MeshComponent* meshes[MAX_ENTITIES];
 extern MaterialComponent materials[MAX_ENTITIES];
+extern CameraComponent cameras[MAX_ENTITIES];
 extern uint8_t entity_active[MAX_ENTITIES];
 
 // API
@@ -53,5 +62,6 @@ void destroy_entity (AppState* state, Entity e);
 void add_transform (Entity e, vec3 pos, vec3 rot, vec3 scale);
 void add_mesh (Entity e, MeshComponent* mesh);
 void add_material (Entity e, MaterialComponent material);
+void add_camera (Entity e, float fov, float near_clip, float far_clip);
 
 SDL_AppResult render_system (AppState* state);
