@@ -12,6 +12,7 @@ TransformComponent transforms[MAX_ENTITIES];
 MeshComponent* meshes[MAX_ENTITIES] = {NULL};
 MaterialComponent materials[MAX_ENTITIES];
 CameraComponent cameras[MAX_ENTITIES];
+FpsCameraControllerComponent fps_controllers[MAX_ENTITIES] = {0};
 uint8_t entity_active[MAX_ENTITIES] = {0};
 
 Entity create_entity() {
@@ -71,6 +72,83 @@ void add_camera(Entity e, float fov, float near_clip, float far_clip) {
     cameras[e].fov = fov;
     cameras[e].near_clip = near_clip;
     cameras[e].far_clip = far_clip;
+}
+
+void add_fps_controller (Entity e, float sense, float speed) {
+    if (e >= MAX_ENTITIES || !entity_active[e]) return;
+    fps_controllers[e].mouse_sense = sense;
+    fps_controllers[e].move_speed = speed;
+}
+
+void fps_controller_event_system(AppState* state, SDL_Event* event) {
+    for (Entity e = 0; e < MAX_ENTITIES; e++) {
+        if (!entity_active[e] || fps_controllers[e].mouse_sense == 0.0f) continue;
+
+        TransformComponent* trans = &transforms[e];
+
+        switch (event->type) {
+            case SDL_EVENT_MOUSE_MOTION: {
+                float delta_yaw = -event->motion.xrel * fps_controllers[e].mouse_sense;
+                float delta_pitch = event->motion.yrel * fps_controllers[e].mouse_sense;
+
+                // Global yaw around world up
+                vec4 dq_yaw = quat_from_axis_angle((vec3){0.0f, 1.0f, 0.0f}, delta_yaw);
+                trans->rotation = quat_multiply(dq_yaw, trans->rotation);
+
+                // Local pitch around right axis
+                vec3 forward = vec3_rotate(trans->rotation, (vec3){0.0f, 0.0f, -1.0f});
+                vec3 right = vec3_normalize(vec3_cross(forward, (vec3){0.0f, 1.0f, 0.0f}));
+                vec4 dq_pitch = quat_from_axis_angle(right, delta_pitch);
+                trans->rotation = quat_multiply(dq_pitch, trans->rotation);
+
+                // Normalize
+                trans->rotation = quat_normalize(trans->rotation);
+
+                // Clamp pitch
+                forward = vec3_rotate(trans->rotation, (vec3){0.0f, 0.0f, -1.0f});
+                float curr_pitch = asinf(forward.y);
+                if (curr_pitch > (float)M_PI * 0.49f || curr_pitch < -(float)M_PI * 0.49f) {
+                    float clamped_pitch = curr_pitch;
+                    if (clamped_pitch > (float)M_PI * 0.49f) clamped_pitch = (float)M_PI * 0.49f;
+                    if (clamped_pitch < -(float)M_PI * 0.49f) clamped_pitch = -(float)M_PI * 0.49f;
+                    float curr_yaw = atan2f(forward.x, forward.z) + (float)M_PI;
+                    trans->rotation = quat_from_euler((vec3){clamped_pitch, curr_yaw, 0.0f});
+                }
+                break;
+            }
+            case SDL_EVENT_KEY_DOWN:
+                if (event->key.key == SDLK_ESCAPE) {
+                    state->quit = true;
+                }
+                break;
+        }
+    }
+}
+
+void fps_controller_update_system(AppState* state, float dt) {
+    for (Entity e = 0; e < MAX_ENTITIES; e++) {
+        if (!entity_active[e] || fps_controllers[e].move_speed == 0.0f) continue;
+
+        TransformComponent* trans = &transforms[e];
+
+        // Directions (note: up uses {0.0f, -1.0f, 0.0f} as in original code; fix if needed)
+        vec3 forward = vec3_rotate(trans->rotation, (vec3){0.0f, 0.0f, -1.0f});
+        vec3 right = vec3_rotate(trans->rotation, (vec3){1.0f, 0.0f, 0.0f});
+        vec3 up = vec3_rotate(trans->rotation, (vec3){0.0f, -1.0f, 0.0f});
+
+        int numkeys;
+        const bool* key_state = SDL_GetKeyboardState(&numkeys);
+        vec3 motion = {0.0f, 0.0f, 0.0f};
+        if (key_state[SDL_SCANCODE_W]) motion = vec3_add(motion, forward);
+        if (key_state[SDL_SCANCODE_A]) motion = vec3_sub(motion, right);
+        if (key_state[SDL_SCANCODE_S]) motion = vec3_sub(motion, forward);
+        if (key_state[SDL_SCANCODE_D]) motion = vec3_add(motion, right);
+        if (key_state[SDL_SCANCODE_SPACE]) motion = vec3_add(motion, up);
+
+        motion = vec3_normalize(motion);
+        motion = vec3_scale(motion, dt * fps_controllers[e].move_speed);
+        trans->position = vec3_add(trans->position, motion);
+    }
 }
 
 SDL_AppResult render_system(AppState* state) {

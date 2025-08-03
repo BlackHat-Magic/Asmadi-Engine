@@ -38,38 +38,12 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
         case SDL_EVENT_QUIT:
             state->quit = true;
             break;
-        case SDL_EVENT_MOUSE_MOTION:
-            float delta_yaw = -event->motion.xrel * MOUSE_SENSE;
-            float delta_pitch = event->motion.yrel * MOUSE_SENSE;
-
-            // Global yaw around world up (keeps level)
-            vec4 dq_yaw = quat_from_axis_angle((vec3){0.0f, 1.0f, 0.0f}, delta_yaw);
-            cam_trans->rotation = quat_multiply(dq_yaw, cam_trans->rotation);
-
-            // Local pitch around horizontal right axis (cross(forward, world_up))
-            vec3 forward = vec3_rotate(cam_trans->rotation, (vec3){0.0f, 0.0f, -1.0f});
-            vec3 right = vec3_normalize(vec3_cross(forward, (vec3){0.0f, 1.0f, 0.0f}));
-            vec4 dq_pitch = quat_from_axis_angle(right, delta_pitch);
-            cam_trans->rotation = quat_multiply(dq_pitch, cam_trans->rotation);
-
-            // Normalize total rotation
-            cam_trans->rotation = quat_normalize(cam_trans->rotation);
-
-            // Clamp pitch
-            forward = vec3_rotate(cam_trans->rotation, (vec3){0.0f, 0.0f, -1.0f});
-            float curr_pitch = asinf(forward.y);
-            if (curr_pitch > (float)M_PI * 0.49f || curr_pitch < -(float)M_PI * 0.49f) {
-                float clamped_pitch = curr_pitch;
-                if (clamped_pitch > (float)M_PI * 0.49f) clamped_pitch = (float)M_PI * 0.49f;
-                if (clamped_pitch < -(float)M_PI * 0.49f) clamped_pitch = -(float)M_PI * 0.49f;
-                float curr_yaw = atan2f(forward.x, forward.z) + (float)M_PI;
-                cam_trans->rotation = quat_from_euler((vec3){clamped_pitch, curr_yaw, 0.0f});
-            }
-            break;
         case SDL_EVENT_KEY_DOWN:
             if (event->key.key == SDLK_ESCAPE) state->quit = true;
             break;
     }
+
+    fps_controller_event_system (state, event);
 
     return SDL_APP_CONTINUE;
 }
@@ -211,6 +185,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     Entity camera = create_entity();
     add_transform(camera, (vec3){0.0f, 0.0f, -2.0f}, (vec3){0.0f, (float)M_PI, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
     add_camera(camera, STARTING_FOV, 0.01f, 1000.0f);
+    add_fps_controller (camera, MOUSE_SENSE, MOVEMENT_SPEED);
     state->camera_entity = camera;
     SDL_SetWindowRelativeMouseMode(state->window, true);
 
@@ -236,23 +211,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     state->last_time = now;
 
     // camera forward vector
-    vec3 camera_forward = quat_rotate(cam_trans->rotation, (vec3){0.0f, 0.0f, -1.0f});
-    vec3 camera_right = quat_rotate(cam_trans->rotation, (vec3){1.0f, 0.0f, 0.0f});
-    vec3 camera_up = quat_rotate(cam_trans->rotation, (vec3){0.0f, -1.0f, 0.0f});
-    // TODO: fix camera_up being wrong
-
-    // movement
-    int numkeys;
-    const bool* key_state = SDL_GetKeyboardState(&numkeys);
-    vec3 motion           = {0.0f, 0.0f, 0.0f};
-    if (key_state[SDL_SCANCODE_W]) motion = vec3_add(motion, camera_forward);
-    if (key_state[SDL_SCANCODE_A]) motion = vec3_sub(motion, camera_right);
-    if (key_state[SDL_SCANCODE_S]) motion = vec3_sub(motion, camera_forward);
-    if (key_state[SDL_SCANCODE_D]) motion = vec3_add(motion, camera_right);
-    if (key_state[SDL_SCANCODE_SPACE]) motion = vec3_add(motion, camera_up);
-    motion             = vec3_normalize(motion);
-    motion             = vec3_scale(motion, dt * MOVEMENT_SPEED);
-    cam_trans->position = vec3_add(cam_trans->position, motion);
+    fps_controller_update_system(state, dt);
 
     render_system(state);
 
