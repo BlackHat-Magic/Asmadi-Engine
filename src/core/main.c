@@ -5,6 +5,8 @@
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_timer.h>
+#include "geometry/cylinder.h"
+#include "geometry/tetrahedron.h"
 #define SDL_MAIN_USE_CALLBACKS 1
 
 #include <SDL3/SDL.h>
@@ -12,11 +14,22 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_video.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "core/appstate.h"
 #include "ecs/ecs.h"
 #include "geometry/box.h"
+#include "geometry/capsule.h"
+#include "geometry/circle.h"
+#include "geometry/cone.h"
+#include "geometry/dodecahedron.h"
+#include "geometry/icosahedron.h"
+#include "geometry/octahedron.h"
 #include "geometry/plane.h"
+#include "geometry/ring.h"
+#include "geometry/sphere.h"
+#include "geometry/torus.h"
+#include "geometry/tetrahedron.h"
 #include "material/m_common.h"
 #include "material/basic_material.h"
 #include "math/matrix.h"
@@ -132,84 +145,182 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     }
 
     // create box entity
-    vec3 transforms[] = {
-        {0.0f, 0.0f, 0.0f},
-        {2.0f, 0.0f, 0.0f},
-        {3.0f, 4.0f, 0.0f},
-        {0.0f, 0.0f, 5.0f},
-        {-2.0f, 0.0f, -3.0f},
-        {-4.0f, -5.0f, 1.0f},
-        {0.0f, 0.0f, 2.0f},
-        {0.0f, 3.0f, 0.0f},
-        {0.0f, 4.0f, 5.0f},
-        {-2.0f, 0.0f, 0.0f}
-    };
-    for (int i = 0; i < 10; i++) {
-        Entity box              = create_entity();
+    Entity box = create_entity();
+    // create box mesh
+    MeshComponent* box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
+    if (box_mesh == NULL)
+        return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
+    add_mesh(box, box_mesh);
+    // create box material
+    MaterialComponent box_material =
+        create_basic_material((vec3){1.0f, 0.0f, 0.0f}, SIDE_FRONT, state);
+    add_material(box, box_material);
+    // box transform
+    add_transform(
+        box, (vec3) {0.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f},
+        (vec3){1.0f, 1.0f, 1.0f}
+    );
 
-        // create box mesh
-        MeshComponent* box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
-        if (box_mesh == NULL)
-            return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
-        add_mesh(box, box_mesh);
-
-        // create box material
-        MaterialComponent box_material =
-            create_basic_material((vec3){1.0f, 1.0f, 1.0f}, state->device);
-
-        // box vertex shader
-        int vert_failed = set_vertex_shader(
-            state->device, &box_material, "shaders/basic_material.vert.spv",
-            state->swapchain_format
-        );
-        if (vert_failed)
-            return SDL_APP_FAILURE;  // logging handled in set_vertex_shader
-
-        // box fragment shader
-        int frag_failed = set_fragment_shader(
-            state->device, &box_material, "shaders/basic_material.frag.spv",
-            state->swapchain_format
-        );
-        if (frag_failed)
-            return SDL_APP_FAILURE;  // logging handled in set_fragment_shader
-
-        // texture
-        if (i % 2 == 1) {
-            box_material.texture = load_texture(state->device, "assets/test.png");
-        }
-
-        // apply box material
-        add_material(box, box_material);
-        add_transform(
-            box, transforms[i], (vec3){0.0f, 0.0f, 0.0f},
-            (vec3){1.0f, 1.0f, 1.0f}
-        );
-    }
+    // textured box
+    Entity tbox = create_entity();
+    // texutred box mesh
+    MeshComponent* tbox_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
+    if (box_mesh == NULL)
+        return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
+    add_mesh(tbox, tbox_mesh);
+    // textured box material
+    MaterialComponent tbox_material =
+        create_basic_material((vec3){1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
+    tbox_material.texture = load_texture(state->device, "assets/test.png");
+    if (tbox_material.texture == NULL) return SDL_APP_FAILURE;
+    add_material(tbox, tbox_material);
+    // textured box transform
+    add_transform(
+        tbox, (vec3) {2.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f},
+        (vec3){1.0f, 1.0f, 1.0f}
+    );
 
     // billboard
     Entity billboard = create_entity();
+    add_billboard(billboard);
+    // billboard mesh
     MeshComponent* billboard_mesh = create_plane_mesh(1.0f, 1.0f, 1, 1, state->device);
     if (billboard_mesh == NULL) return SDL_APP_FAILURE; // logging handled inside function
     add_mesh(billboard, billboard_mesh);
-
     // billboard material
-    MaterialComponent billboard_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, state->device);
-    int vert_failed = set_vertex_shader(state->device, &billboard_material, "shaders/basic_material.vert.spv", state->swapchain_format);
-    if (vert_failed) return SDL_APP_FAILURE;
-    int frag_failed = set_fragment_shader (state->device, &billboard_material, "shaders/basic_material.frag.spv", state->swapchain_format);
-    if (frag_failed) return SDL_APP_FAILURE;
+    MaterialComponent billboard_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
     billboard_material.texture = load_texture(state->device, "assets/test.bmp");
-    if (billboard_material.texture == NULL) {
-        SDL_Log ("Unable to load billboard texture: %s", SDL_GetError ());
-        return SDL_APP_FAILURE;
-    }
+    if (billboard_material.texture == NULL) return SDL_APP_FAILURE;
     add_material(billboard, billboard_material);
-
     // billboard transform
-    add_transform(billboard, (vec3){7.0f, 7.0f, 7.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+    add_transform(billboard, (vec3){4.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
 
-    // add billboard flag
-    add_billboard(billboard);
+    // capsule
+    Entity capsule = create_entity();
+    MeshComponent* capsule_mesh = create_capsule_mesh (0.5f, 1.0f, 8, 16, state->device);
+    if (!capsule_mesh) return SDL_APP_FAILURE;
+    add_mesh(capsule, capsule_mesh);
+    // capsule material
+    MaterialComponent capsule_material = create_basic_material ((vec3) {0.0f, 1.0f, 0.0f}, SIDE_FRONT, state);
+    add_material (capsule, capsule_material);
+    // capsule transform
+    add_transform(capsule, (vec3) {6.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // circle
+    Entity circle = create_entity();
+    MeshComponent* circle_mesh = create_circle_mesh (0.5f, 16, state->device);
+    add_mesh(circle, circle_mesh);
+    // circle material
+    MaterialComponent circle_material = create_basic_material ((vec3) {1.0f, 1.0f, 0.0f}, SIDE_DOUBLE, state);
+    add_material(circle, circle_material);
+    // circle transform
+    add_transform (circle, (vec3) {8.0f, 0.0f, 0.0f}, (vec3) {0.0f, 0.0f, 0.0f}, (vec3) {1.0f, 1.0f, 1.0f});
+
+    // cone
+    Entity cone = create_entity();
+    // cone mesh
+    MeshComponent* cone_mesh = create_cone_mesh (0.5f, 1.0f, 16, 1, false, 0.0f, (float)M_PI * 2.0f, state->device);
+    add_mesh(cone, cone_mesh);
+    // cone material
+    MaterialComponent cone_material = create_basic_material ((vec3) {0.0f, 0.0f, 1.0f}, SIDE_FRONT, state);
+    add_material (cone, cone_material);
+    // cone transform
+    add_transform (cone, (vec3) {0.0f, 2.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // cylinder
+    Entity cylinder = create_entity();
+    // cylinder mesh
+    MeshComponent* cylinder_mesh = create_cylinder_mesh(0.5f, 0.5f, 1.0f, 16, 1, false, 0.0f, (float)M_PI * 2.0f, state->device);
+    add_mesh(cylinder, cylinder_mesh);
+    // cylinder material
+    MaterialComponent cylinder_material = create_basic_material((vec3) {1.0f, 0.0f, 1.0f}, SIDE_FRONT, state);
+    add_material(cylinder, cylinder_material);
+    // cylinder transform
+    add_transform (cylinder, (vec3) {2.0f, 2.0f, 0.0f}, (vec3) {0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // ring
+    Entity ring = create_entity();
+    // mesh
+    MeshComponent* ring_mesh = create_ring_mesh(0.25f, 0.5f, 32, 1, 0.0f, (float)M_PI * 2.0f, state->device);
+    if (ring_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh(ring, ring_mesh);
+    // material
+    MaterialComponent ring_material = create_basic_material((vec3){0.0f, 1.0f, 1.0f}, SIDE_DOUBLE, state);
+    add_material(ring, ring_material);
+    // transform
+    add_transform(ring, (vec3){4.0f, 2.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // sphere
+    Entity sphere = create_entity();
+    // mesh
+    MeshComponent* sphere_mesh = create_sphere_mesh(0.5f, 32, 16, 0.0f, (float)M_PI * 2.0f, 0.0f, (float)M_PI, state->device);
+    if (sphere_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh(sphere, sphere_mesh);
+    // material
+    MaterialComponent sphere_material = create_basic_material((vec3){1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
+    add_material(sphere, sphere_material);
+    // transform
+    add_transform(sphere, (vec3){6.0f, 2.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // torus
+    Entity torus = create_entity();
+    // mesh
+    MeshComponent* torus_mesh = create_torus_mesh(0.5f, 0.2f, 16, 32, (float)M_PI * 2.0f, state->device);
+    if (torus_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh(torus, torus_mesh);
+    // material
+    MaterialComponent torus_material = create_basic_material((vec3){0.5f, 0.0f, 0.0f}, SIDE_FRONT, state);
+    add_material(torus, torus_material);
+    // transform
+    add_transform(torus, (vec3){8.0f, 2.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // tetrahedron
+    Entity tetrahedron = create_entity();
+    // mesh
+    MeshComponent* tetrahedron_mesh = create_tetrahedron_mesh(0.5f, state->device);
+    if (tetrahedron_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh(tetrahedron, tetrahedron_mesh);
+    // material
+    MaterialComponent tetrahedron_material = create_basic_material((vec3){0.0f, 0.5f, 0.0f}, SIDE_FRONT, state);
+    add_material(tetrahedron, tetrahedron_material);
+    // transform
+    add_transform(tetrahedron, (vec3){0.0f, 4.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // octahedron
+    Entity octahedron = create_entity();
+    // mesh
+    MeshComponent* octahedron_mesh = create_octahedron_mesh(0.5f, state->device);
+    if (octahedron_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh (octahedron, octahedron_mesh);
+    // material
+    MaterialComponent octahedron_material = create_basic_material ((vec3){0.5f, 0.5f, 0.0f}, SIDE_FRONT, state);
+    add_material(octahedron, octahedron_material);
+    // transform
+    add_transform(octahedron, (vec3){2.0f, 4.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // dodecahedron
+    Entity dodecahedron = create_entity();
+    // mesh
+    MeshComponent* dodecahedron_mesh = create_dodecahedron_mesh(0.5f, state->device);
+    if (dodecahedron_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh (dodecahedron, dodecahedron_mesh);
+    // material
+    MaterialComponent dodecahedron_material = create_basic_material ((vec3){0.0f, 0.0f, 0.5f}, SIDE_FRONT, state);
+    add_material(dodecahedron, dodecahedron_material);
+    // transform
+    add_transform(dodecahedron, (vec3){4.0f, 4.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // octahedron
+    Entity icosahedron = create_entity();
+    // mesh
+    MeshComponent* icosahedron_mesh = create_icosahedron_mesh(0.5f, state->device);
+    if (icosahedron_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh (icosahedron, icosahedron_mesh);
+    // material
+    MaterialComponent icosahedron_material = create_basic_material ((vec3){0.5f, 0.0f, 0.5f}, SIDE_FRONT, state);
+    add_material(icosahedron, icosahedron_material);
+    // transform
+    add_transform(icosahedron, (vec3){6.0f, 4.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
 
     // camera
     Entity camera = create_entity();

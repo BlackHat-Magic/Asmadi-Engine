@@ -1,6 +1,47 @@
-# GMTK GameJam 2025
+# Asmadi Engine
 
 oh wow this is getting complicated fast
 
-## No render
-- Load texture is good 👍
+## Todo
+[ ] Geometry
+    [X] ~~Box~~
+    [X] ~~Plane~~
+    [X] ~~Capsule~~
+    [X] ~~Circle~~
+    [X] ~~Cone~~
+    [X] ~~Cylinder~~
+    [X] ~~Dodecahedron~~
+    [ ] Extrude
+    [X] ~~Icosahedron~~
+    [X] ~~Lathe~~
+    [X] ~~Octahedron~~
+    [X] ~~Ring~~
+    [ ] Shape
+    [X] ~~Sphere~~
+    [ ] Ico Sphere
+    [ ] That one other sphere... you know the one
+    [X] ~~Tetrahedron~~
+    [X] ~~Torus~~
+    [ ] Torus Knot?
+    [ ] Tube
+[ ] Math
+    [ ] Random Integers
+    [ ] Random Floats
+    [ ] Random Choice
+    [ ] Weighted Randomness
+    [ ] Splines
+    [ ] LERP
+[ ] Materials
+    [ ] Basic Material
+        - I still feel like this needs work
+    [ ] Depth Material
+    [ ] Distance Material?
+    [ ] Lambert Material
+    [ ] Matcap Material?
+    [ ] Normal Material
+    [ ] Phong Material
+    [ ] Standard/Physical Material
+    [ ] Toon Material
+[ ] Controllers
+[ ] Physics
+[ ] UV Mapping for Mesh Primitives
