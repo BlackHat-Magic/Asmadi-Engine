@@ -139,6 +139,83 @@ SDL_GPUTexture* load_texture(SDL_GPUDevice* device, const char* bmp_file_path) {
     return texture;
 }
 
+// used for solid-color objects
+SDL_GPUTexture* create_white_texture(SDL_GPUDevice* device) {
+    SDL_GPUTextureCreateInfo tex_info = {
+        .type = SDL_GPU_TEXTURETYPE_2D,
+        .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+        .width = 1,
+        .height = 1,
+        .layer_count_or_depth = 1,
+        .num_levels = 1,
+        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
+    };
+    SDL_GPUTexture* tex = SDL_CreateGPUTexture(device, &tex_info);
+    if (!tex) {
+        SDL_Log("Failed to create white texture: %s", SDL_GetError());
+        return NULL;
+    }
+
+    Uint8 pixel[4] = {255, 255, 255, 255};  // White pixel
+
+    SDL_GPUTransferBufferCreateInfo trans_info = {
+        .size = 4,
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+    };
+    SDL_GPUTransferBuffer* trans = SDL_CreateGPUTransferBuffer(device, &trans_info);
+    if (!trans) {
+        SDL_Log("Failed to create transfer buffer for white texture: %s", SDL_GetError());
+        SDL_ReleaseGPUTexture(device, tex);
+        return NULL;
+    }
+
+    void* data = SDL_MapGPUTransferBuffer(device, trans, false);
+    if (!data) {
+        SDL_Log("Failed to map transfer buffer for white texture: %s", SDL_GetError());
+        SDL_ReleaseGPUTransferBuffer(device, trans);
+        SDL_ReleaseGPUTexture(device, tex);
+        return NULL;
+    }
+    memcpy(data, pixel, 4);
+    SDL_UnmapGPUTransferBuffer(device, trans);
+
+    SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(device);
+    if (!cmd) {
+        SDL_Log("Failed to acquire command buffer for white texture: %s", SDL_GetError());
+        SDL_ReleaseGPUTransferBuffer(device, trans);
+        SDL_ReleaseGPUTexture(device, tex);
+        return NULL;
+    }
+
+    SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(cmd);
+    if (!copy) {
+        SDL_Log("Failed to begin copy pass for white texture: %s", SDL_GetError());
+        SDL_SubmitGPUCommandBuffer(cmd);
+        SDL_ReleaseGPUTransferBuffer(device, trans);
+        SDL_ReleaseGPUTexture(device, tex);
+        return NULL;
+    }
+
+    SDL_GPUTextureTransferInfo src = {
+        .transfer_buffer = trans,
+        .offset = 0,
+        .pixels_per_row = 1,
+        .rows_per_layer = 1
+    };
+    SDL_GPUTextureRegion dst = {
+        .texture = tex,
+        .w = 1,
+        .h = 1,
+        .d = 1
+    };
+    SDL_UploadToGPUTexture(copy, &src, &dst, false);
+    SDL_EndGPUCopyPass(copy);
+    SDL_SubmitGPUCommandBuffer(cmd);
+
+    SDL_ReleaseGPUTransferBuffer(device, trans);
+    return tex;
+}
+
 // returns 0 on success 1 on failure
 int set_vertex_shader(
     SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath,

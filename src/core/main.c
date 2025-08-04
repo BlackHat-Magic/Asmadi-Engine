@@ -11,15 +11,14 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_video.h>
-#include <math.h>
 #include <stdlib.h>
 
 #include "core/appstate.h"
 #include "ecs/ecs.h"
 #include "geometry/box.h"
 #include "geometry/plane.h"
-#include "material/basic_material.h"
 #include "material/m_common.h"
+#include "material/basic_material.h"
 #include "math/matrix.h"
 
 #define STARTING_WIDTH 640
@@ -112,8 +111,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     state->dheight = state->height;
 
      // load texture
-    state->texture = load_texture(state->device, "assets/test.png");
-    if (!state->texture) return SDL_APP_FAILURE; // logging handled inside load_texture()
+    state->white_texture = create_white_texture (state->device);
+    if (!state->white_texture) return SDL_APP_FAILURE; // logging handled inside load_texture()
 
     // create sampler
     SDL_GPUSamplerCreateInfo sampler_info = {
@@ -156,11 +155,11 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
         // create box material
         MaterialComponent box_material =
-            create_basic_material((vec3){0.75f, 0.0f, 0.0f}, state->device);
+            create_basic_material((vec3){1.0f, 1.0f, 1.0f}, state->device);
 
         // box vertex shader
         int vert_failed = set_vertex_shader(
-            state->device, &box_material, "shaders/triangle.vert.spv",
+            state->device, &box_material, "shaders/basic_material.vert.spv",
             state->swapchain_format
         );
         if (vert_failed)
@@ -168,11 +167,16 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
         // box fragment shader
         int frag_failed = set_fragment_shader(
-            state->device, &box_material, "shaders/triangle.frag.spv",
+            state->device, &box_material, "shaders/basic_material.frag.spv",
             state->swapchain_format
         );
         if (frag_failed)
             return SDL_APP_FAILURE;  // logging handled in set_fragment_shader
+
+        // texture
+        if (i % 2 == 1) {
+            box_material.texture = load_texture(state->device, "assets/test.png");
+        }
 
         // apply box material
         add_material(box, box_material);
@@ -190,9 +194,9 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
     // billboard material
     MaterialComponent billboard_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, state->device);
-    int vert_failed = set_vertex_shader(state->device, &billboard_material, "shaders/triangle.vert.spv", state->swapchain_format);
+    int vert_failed = set_vertex_shader(state->device, &billboard_material, "shaders/basic_material.vert.spv", state->swapchain_format);
     if (vert_failed) return SDL_APP_FAILURE;
-    int frag_failed = set_fragment_shader (state->device, &billboard_material, "shaders/triangle.frag.spv", state->swapchain_format);
+    int frag_failed = set_fragment_shader (state->device, &billboard_material, "shaders/basic_material.frag.spv", state->swapchain_format);
     if (frag_failed) return SDL_APP_FAILURE;
     billboard_material.texture = load_texture(state->device, "assets/test.bmp");
     if (billboard_material.texture == NULL) {
@@ -209,7 +213,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
     // camera
     Entity camera = create_entity();
-    add_transform(camera, (vec3){0.0f, 0.0f, -2.0f}, (vec3){0.0f, (float)M_PI, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+    add_transform(camera, (vec3){0.0f, 0.0f, -2.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
     add_camera(camera, STARTING_FOV, 0.01f, 1000.0f);
     add_fps_controller (camera, MOUSE_SENSE, MOVEMENT_SPEED);
     state->camera_entity = camera;
@@ -246,8 +250,8 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
 void SDL_AppQuit(void* appstate, SDL_AppResult result) {
     AppState* state = (AppState*)appstate;
-    if (state->texture) {
-        SDL_ReleaseGPUTexture(state->device, state->texture);
+    if (state->white_texture) {
+        SDL_ReleaseGPUTexture(state->device, state->white_texture);
     }
     if (state->sampler) {
         SDL_ReleaseGPUSampler(state->device, state->sampler);

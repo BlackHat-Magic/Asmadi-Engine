@@ -7,7 +7,7 @@ layout (location = 0) out vec3 fragColor;
 layout (location = 1) out vec2 TexCoord;
 
 layout(std140, set = 1, binding = 0) uniform UBO {
-    vec3 colors[3];
+    vec4 color;
     mat4 model;
     mat4 view;
     mat4 projection;
@@ -15,6 +15,6 @@ layout(std140, set = 1, binding = 0) uniform UBO {
 
 void main() {
     gl_Position = ubo.projection * ubo.view * ubo.model * vec4(aPos, 1.0);
-    fragColor = ubo.colors[gl_VertexIndex % 3];  // Reuse colors across quad vertices (or update to per-vertex if needed)
+    fragColor = ubo.color.rgb;  // Reuse colors across quad vertices (or update to per-vertex if needed)
     TexCoord = aTexCoord;
 }

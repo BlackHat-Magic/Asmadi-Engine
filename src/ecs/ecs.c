@@ -95,7 +95,7 @@ void fps_controller_event_system(AppState* state, SDL_Event* event) {
 
         switch (event->type) {
             case SDL_EVENT_MOUSE_MOTION: {
-                float delta_yaw = -event->motion.xrel * fps_controllers[e].mouse_sense;
+                float delta_yaw = event->motion.xrel * fps_controllers[e].mouse_sense;
                 float delta_pitch = event->motion.yrel * fps_controllers[e].mouse_sense;
 
                 // Global yaw around world up
@@ -139,9 +139,9 @@ void fps_controller_update_system(AppState* state, float dt) {
         TransformComponent* trans = &transforms[e];
 
         // Directions (note: up uses {0.0f, -1.0f, 0.0f} as in original code; fix if needed)
-        vec3 forward = vec3_rotate(trans->rotation, (vec3){0.0f, 0.0f, -1.0f});
+        vec3 forward = vec3_rotate(trans->rotation, (vec3){0.0f, 0.0f, 1.0f});
         vec3 right = vec3_rotate(trans->rotation, (vec3){1.0f, 0.0f, 0.0f});
-        vec3 up = vec3_rotate(trans->rotation, (vec3){0.0f, -1.0f, 0.0f});
+        vec3 up = vec3_rotate(trans->rotation, (vec3){0.0f, 1.0f, 0.0f});
 
         int numkeys;
         const bool* key_state = SDL_GetKeyboardState(&numkeys);
@@ -267,6 +267,7 @@ SDL_AppResult render_system(AppState* state) {
         if (billboards[e]) {
             mat4_translate(model, trans->position);
             mat4_rotate_quat(model, cam_trans->rotation);
+            mat4_rotate_y(model, (float)M_PI);
             mat4_scale(model, trans->scale);
         } else {
             mat4_translate(model, transforms[e].position);
@@ -279,12 +280,11 @@ SDL_AppResult render_system(AppState* state) {
         memcpy(ubo.view, view, sizeof(mat4));
         memcpy(ubo.proj, proj, sizeof(mat4));
         // Colors: use material.color (shader uses colors[3])
-        for (int i = 0; i < 3; i++) {
-            ubo.colors[i][0] = materials[e].color.x;
-            ubo.colors[i][1] = materials[e].color.y;
-            ubo.colors[i][2] = materials[e].color.z;
-            ubo.colors[i][3] = 0.0f; // padding
-        }
+        ubo.color.w = materials[e].color.x;
+        ubo.color.x = materials[e].color.y;
+        ubo.color.y = materials[e].color.z;
+        ubo.color.z = 1.0f; // alpha 1.0
+
 
         if (materials[e].pipeline) {
             SDL_BindGPUGraphicsPipeline(pass, materials[e].pipeline);
@@ -296,7 +296,7 @@ SDL_AppResult render_system(AppState* state) {
 
         SDL_GPUTextureSamplerBinding tex_bind = {
             .texture =
-                materials[e].texture ? materials[e].texture : state->texture,
+                materials[e].texture ? materials[e].texture : state->white_texture,
             .sampler = state->sampler
         };
         SDL_BindGPUFragmentSamplers(pass, 0, &tex_bind, 1);
