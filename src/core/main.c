@@ -16,6 +16,7 @@
 #include "core/appstate.h"
 #include "ecs/ecs.h"
 #include "geometry/box.h"
+#include "geometry/capsule.h"
 #include "geometry/plane.h"
 #include "material/m_common.h"
 #include "material/basic_material.h"
@@ -155,23 +156,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
         // create box material
         MaterialComponent box_material =
-            create_basic_material((vec3){1.0f, 1.0f, 1.0f}, state->device);
-
-        // box vertex shader
-        int vert_failed = set_vertex_shader(
-            state->device, &box_material, "shaders/basic_material.vert.spv",
-            state->swapchain_format
-        );
-        if (vert_failed)
-            return SDL_APP_FAILURE;  // logging handled in set_vertex_shader
-
-        // box fragment shader
-        int frag_failed = set_fragment_shader(
-            state->device, &box_material, "shaders/basic_material.frag.spv",
-            state->swapchain_format
-        );
-        if (frag_failed)
-            return SDL_APP_FAILURE;  // logging handled in set_fragment_shader
+            create_basic_material((vec3){1.0f, 1.0f, 1.0f}, state);
 
         // texture
         if (i % 2 == 1) {
@@ -193,11 +178,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     add_mesh(billboard, billboard_mesh);
 
     // billboard material
-    MaterialComponent billboard_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, state->device);
-    int vert_failed = set_vertex_shader(state->device, &billboard_material, "shaders/basic_material.vert.spv", state->swapchain_format);
-    if (vert_failed) return SDL_APP_FAILURE;
-    int frag_failed = set_fragment_shader (state->device, &billboard_material, "shaders/basic_material.frag.spv", state->swapchain_format);
-    if (frag_failed) return SDL_APP_FAILURE;
+    MaterialComponent billboard_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, state);
     billboard_material.texture = load_texture(state->device, "assets/test.bmp");
     if (billboard_material.texture == NULL) {
         SDL_Log ("Unable to load billboard texture: %s", SDL_GetError ());
@@ -210,6 +191,19 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
     // add billboard flag
     add_billboard(billboard);
+
+    // capsule
+    Entity capsule = create_entity();
+    MeshComponent* capsule_mesh = create_capsule_mesh (1.0f, 2.0f, 8, 16, state->device);
+    if (!capsule_mesh) return SDL_APP_FAILURE;
+    add_mesh(capsule, capsule_mesh);
+
+    // capsule material
+    MaterialComponent capsule_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, state);
+    add_material (capsule, capsule_material);
+
+    // capsule transform
+    add_transform(capsule, (vec3) {0.0f, 10.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
 
     // camera
     Entity camera = create_entity();

@@ -3,4 +3,4 @@
 #include "math/matrix.h"
 #include "ecs/ecs.h"
 
-MaterialComponent create_basic_material (vec3 color, SDL_GPUDevice* device);
+MaterialComponent create_basic_material (vec3 color, AppState* state);
