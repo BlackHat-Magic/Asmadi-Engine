@@ -38,29 +38,28 @@ MeshComponent* create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
         vertices[i * 5 + 3] = u;
         vertices[i * 5 + 4] = v;
     }
-
-    // 20 triangles (reversed from standard CCW to CW)
+    
     uint16_t indices[] = {
-        0, 5, 11,   // Reversed: original 0,11,5 -> 0,5,11
-        0, 1, 5,
-        0, 7, 1,
-        0, 10, 7,
-        0, 11, 10,
-        1, 9, 5,
-        5, 4, 11,
-        11, 2, 10,
-        10, 6, 7,
-        7, 8, 1,
-        3, 4, 9,
-        3, 2, 4,
-        3, 6, 2,
-        3, 8, 6,
-        3, 9, 8,
-        4, 5, 9,
-        2, 11, 4,
-        6, 10, 2,
-        8, 7, 6,
-        9, 1, 8
+        11, 5, 0,
+        5, 1, 0,
+        1, 7, 0,
+        7, 10, 0,
+        10, 11, 0,
+        5, 9, 1,
+        11, 4, 5,
+        10, 2, 11,
+        7, 6, 10,
+        1, 8, 7,
+        9, 4, 3,
+        4, 2, 3,
+        2, 6, 3,
+        6, 8, 3,
+        8, 9, 3,
+        9, 5, 4,
+        4, 11, 2,
+        2, 10, 6,
+        6, 7, 8,
+        8, 1, 9
     };
 
     SDL_GPUBuffer* vbo = NULL;
