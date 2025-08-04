@@ -19,7 +19,7 @@ if(COMPILE_SHADERS)
         set(SHADER_OUTPUT_DIR ${CMAKE_BINARY_DIR}/shaders)
         file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIR})
 
-        set(SHADERS triangle.vert triangle.frag)
+        set(SHADERS basic_material.vert basic_material.frag)
 
         foreach(SHADER ${SHADERS})
             set(INPUT ${SHADER_DIR}/${SHADER})

@@ -160,7 +160,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
         // box vertex shader
         int vert_failed = set_vertex_shader(
-            state->device, &box_material, "shaders/triangle.vert.spv",
+            state->device, &box_material, "shaders/basic_material.vert.spv",
             state->swapchain_format
         );
         if (vert_failed)
@@ -168,7 +168,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
         // box fragment shader
         int frag_failed = set_fragment_shader(
-            state->device, &box_material, "shaders/triangle.frag.spv",
+            state->device, &box_material, "shaders/basic_material.frag.spv",
             state->swapchain_format
         );
         if (frag_failed)
@@ -190,9 +190,9 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
     // billboard material
     MaterialComponent billboard_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, state->device);
-    int vert_failed = set_vertex_shader(state->device, &billboard_material, "shaders/triangle.vert.spv", state->swapchain_format);
+    int vert_failed = set_vertex_shader(state->device, &billboard_material, "shaders/basic_material.vert.spv", state->swapchain_format);
     if (vert_failed) return SDL_APP_FAILURE;
-    int frag_failed = set_fragment_shader (state->device, &billboard_material, "shaders/triangle.frag.spv", state->swapchain_format);
+    int frag_failed = set_fragment_shader (state->device, &billboard_material, "shaders/basic_material.frag.spv", state->swapchain_format);
     if (frag_failed) return SDL_APP_FAILURE;
     billboard_material.texture = load_texture(state->device, "assets/test.bmp");
     if (billboard_material.texture == NULL) {
