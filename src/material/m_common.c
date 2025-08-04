@@ -4,6 +4,7 @@
 #include <SDL3/SDL_filesystem.h>
 #include <SDL3/SDL_gpu.h>
 #include <SDL3_image/SDL_image.h>
+#include "ecs/ecs.h"
 
 // shader loader helper function
 SDL_GPUShader* load_shader(
@@ -253,6 +254,18 @@ static int build_pipeline(
     SDL_GPUDevice* device, MaterialComponent* mat,
     SDL_GPUTextureFormat swapchain_format
 ) {
+    SDL_GPUCullMode cullmode = SDL_GPU_CULLMODE_BACK; // back culling default
+    switch (mat->side) {
+        case SIDE_FRONT:
+            cullmode = SDL_GPU_CULLMODE_BACK;
+            break;
+        case SIDE_BACK:
+            cullmode = SDL_GPU_CULLMODE_FRONT;
+            break;
+        case SIDE_DOUBLE:
+            cullmode = SDL_GPU_CULLMODE_NONE;
+            break;
+    }
     SDL_GPUGraphicsPipelineCreateInfo pipe_info = {
         .target_info =
             {
@@ -289,7 +302,7 @@ static int build_pipeline(
                  }, .num_vertex_attributes = 2},
         .rasterizer_state =
             {.fill_mode  = SDL_GPU_FILLMODE_FILL,
-                          .cull_mode  = SDL_GPU_CULLMODE_BACK,
+                          .cull_mode  = cullmode,
                           .front_face = SDL_GPU_FRONTFACE_CLOCKWISE},
         .depth_stencil_state = {
                           .enable_depth_test   = true,

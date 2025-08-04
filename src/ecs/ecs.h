@@ -8,6 +8,12 @@
 // TODO: More robust max entities
 #define MAX_ENTITIES 1024
 
+typedef enum {
+    SIDE_FRONT,
+    SIDE_BACK,
+    SIDE_DOUBLE,
+} MaterialSide;
+
 typedef struct {
     vec4 color;
     float model[16];
@@ -37,6 +43,7 @@ typedef struct {
     SDL_GPUShader* vertex_shader;
     SDL_GPUShader* fragment_shader;
     SDL_GPUGraphicsPipeline* pipeline;
+    MaterialSide side;
 } MaterialComponent;
 
 // TODO: make camera able to render to arbitrary texture

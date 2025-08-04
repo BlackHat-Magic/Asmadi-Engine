@@ -7,7 +7,7 @@ oh wow this is getting complicated fast
     [X] ~~Box~~
     [X] ~~Plane~~
     [X] ~~Capsule~~
-    [ ] Circle
+    [X] ~~Circle~~
     [ ] Cone
     [ ] Cylinder
     [ ] Dodecahedron

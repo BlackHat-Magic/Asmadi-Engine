@@ -1,12 +1,13 @@
 #include "material/m_common.h"
 #include "material/basic_material.h"
 
-MaterialComponent create_basic_material(vec3 color, AppState* state) {
+MaterialComponent create_basic_material(vec3 color, MaterialSide side, AppState* state) {
     MaterialComponent mat = {
         .color = color,
         .texture = NULL,
         .vertex_shader = NULL,
-        .fragment_shader = NULL
+        .fragment_shader = NULL,
+        .side = side
     };
 
     // TODO: communicate failure to caller

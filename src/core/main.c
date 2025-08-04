@@ -17,6 +17,7 @@
 #include "ecs/ecs.h"
 #include "geometry/box.h"
 #include "geometry/capsule.h"
+#include "geometry/circle.h"
 #include "geometry/plane.h"
 #include "material/m_common.h"
 #include "material/basic_material.h"
@@ -156,7 +157,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
         // create box material
         MaterialComponent box_material =
-            create_basic_material((vec3){1.0f, 1.0f, 1.0f}, state);
+            create_basic_material((vec3){1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
 
         // texture
         if (i % 2 == 1) {
@@ -178,7 +179,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     add_mesh(billboard, billboard_mesh);
 
     // billboard material
-    MaterialComponent billboard_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, state);
+    MaterialComponent billboard_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
     billboard_material.texture = load_texture(state->device, "assets/test.bmp");
     if (billboard_material.texture == NULL) {
         SDL_Log ("Unable to load billboard texture: %s", SDL_GetError ());
@@ -199,11 +200,23 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     add_mesh(capsule, capsule_mesh);
 
     // capsule material
-    MaterialComponent capsule_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, state);
+    MaterialComponent capsule_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
     add_material (capsule, capsule_material);
 
     // capsule transform
     add_transform(capsule, (vec3) {0.0f, 10.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // circle
+    Entity circle = create_entity();
+    MeshComponent* circle_mesh = create_circle_mesh (0.5f, 16, state->device);
+    add_mesh(circle, circle_mesh);
+
+    // circle material
+    MaterialComponent circle_material = create_basic_material ((vec3) {0.0f, 1.0f, 1.0f}, SIDE_DOUBLE, state);
+    add_material(circle, circle_material);
+
+    // circle transform
+    add_transform (circle, (vec3) {0.0f, 6.0f, 0.0f}, (vec3) {0.0f, 0.0f, 0.0f}, (vec3) {1.0f, 1.0f, 1.0f});
 
     // camera
     Entity camera = create_entity();
