@@ -20,8 +20,9 @@
 #include "geometry/box.h"
 #include "geometry/capsule.h"
 #include "geometry/circle.h"
-#include "geometry/plane.h"
 #include "geometry/cone.h"
+#include "geometry/plane.h"
+#include "geometry/ring.h"
 #include "material/m_common.h"
 #include "material/basic_material.h"
 #include "math/matrix.h"
@@ -229,6 +230,18 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     add_material(cylinder, cylinder_material);
     // cylinder transform
     add_transform (cylinder, (vec3) {2.0f, 2.0f, 0.0f}, (vec3) {0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // ring
+    Entity ring = create_entity();
+    // mesh
+    MeshComponent* ring_mesh = create_ring_mesh(0.5f, 1.0f, 32, 1, 0.0f, (float)M_PI * 2.0f, state->device);
+    if (ring_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh(ring, ring_mesh);
+    // material
+    MaterialComponent ring_material = create_basic_material((vec3){0.0f, 1.0f, 1.0f}, SIDE_DOUBLE, state);
+    add_material(ring, ring_material);
+    // transform
+    add_transform(ring, (vec3){4.0f, 2.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
 
     // camera
     Entity camera = create_entity();

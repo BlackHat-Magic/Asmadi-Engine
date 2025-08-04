@@ -49,6 +49,7 @@ add_executable(space-pirates
     src/geometry/cylinder.c
     src/geometry/lathe.c
     src/geometry/plane.c
+    src/geometry/ring.c
     src/material/m_common.c
     src/material/basic_material.c
     src/math/matrix.c

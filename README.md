@@ -16,7 +16,7 @@ oh wow this is getting complicated fast
     [X] ~~Lathe~~
     [ ] Octahedron
     [ ] Polyhedron?
-    [ ] Ring
+    [X] ~~Ring~~
     [ ] Shape
     [ ] Sphere
     [ ] Ico Sphere
