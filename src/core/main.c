@@ -24,6 +24,7 @@
 #include "geometry/plane.h"
 #include "geometry/ring.h"
 #include "geometry/sphere.h"
+#include "geometry/torus.h"
 #include "material/m_common.h"
 #include "material/basic_material.h"
 #include "math/matrix.h"
@@ -255,6 +256,18 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     add_material(sphere, sphere_material);
     // transform
     add_transform(sphere, (vec3){6.0f, 2.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // torus
+    Entity torus = create_entity();
+    // mesh
+    MeshComponent* torus_mesh = create_torus_mesh(0.5f, 0.2f, 16, 32, (float)M_PI * 2.0f, state->device);
+    if (torus_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh(torus, torus_mesh);
+    // material
+    MaterialComponent torus_material = create_basic_material((vec3){0.5f, 0.0f, 0.0f}, SIDE_FRONT, state);
+    add_material(torus, torus_material);
+    // transform
+    add_transform(torus, (vec3){8.0f, 2.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
 
     // camera
     Entity camera = create_entity();

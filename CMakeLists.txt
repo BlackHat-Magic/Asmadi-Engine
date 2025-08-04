@@ -51,6 +51,7 @@ add_executable(space-pirates
     src/geometry/plane.c
     src/geometry/ring.c
     src/geometry/sphere.c
+    src/geometry/torus.c
     src/material/m_common.c
     src/material/basic_material.c
     src/math/matrix.c
