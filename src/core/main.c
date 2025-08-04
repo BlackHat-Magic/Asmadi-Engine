@@ -11,7 +11,6 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_video.h>
-#include <math.h>
 #include <stdlib.h>
 
 #include "core/appstate.h"

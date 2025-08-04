@@ -149,7 +149,7 @@ int set_vertex_shader(
     if (mat->vertex_shader == NULL)
         return 1;  // logging handled in load_shader()
     if (mat->vertex_shader && mat->fragment_shader) {
-        int pipe_failed = build_pipeline(device, mat, swapchain_format);
+        int pipe_failed = build_pipeline(device, mat, swapchain_format, SDL_GPU_PRIMITIVETYPE_TRIANGLELIST);
         if (pipe_failed) return 1;  // logging handled in build_pipeline()
     }
     return 0;
@@ -165,7 +165,7 @@ int set_fragment_shader(
     if (mat->fragment_shader == NULL)
         return 1;  // logging handled in load_shader()
     if (mat->vertex_shader && mat->fragment_shader) {
-        int pipe_failed = build_pipeline(device, mat, swapchain_format);
+        int pipe_failed = build_pipeline(device, mat, swapchain_format, SDL_GPU_PRIMITIVETYPE_TRIANGLELIST);
         if (pipe_failed) return 1;  // logging handled in build_pipeline()
     }
     return 0;
@@ -174,7 +174,8 @@ int set_fragment_shader(
 // returns 0 on success 1 on failure
 static int build_pipeline(
     SDL_GPUDevice* device, MaterialComponent* mat,
-    SDL_GPUTextureFormat swapchain_format
+    SDL_GPUTextureFormat swapchain_format,
+    SDL_GPUPrimitiveType primitive_type
 ) {
     SDL_GPUGraphicsPipelineCreateInfo pipe_info = {
         .target_info =

@@ -14,6 +14,7 @@ MaterialComponent materials[MAX_ENTITIES];
 CameraComponent cameras[MAX_ENTITIES];
 FpsCameraControllerComponent fps_controllers[MAX_ENTITIES] = {0};
 BillboardComponent billboards[MAX_ENTITIES] = {0};
+uint8_t debug_lines[MAX_ENTITIES] = {0};
 uint8_t entity_active[MAX_ENTITIES] = {0};
 
 Entity create_entity() {
@@ -43,6 +44,7 @@ void destroy_entity(AppState* state, Entity e) {
     memset(&materials[e], 0, sizeof(MaterialComponent));
     memset (&cameras[e], 0, sizeof (CameraComponent));
     billboards[e] = 0;
+    debug_lines[e] = 0;
 
     if (materials[e].pipeline)
         SDL_ReleaseGPUGraphicsPipeline(state->device, materials[e].pipeline);
@@ -85,6 +87,11 @@ void add_fps_controller (Entity e, float sense, float speed) {
 void add_billboard(Entity e) {
     if (e >= MAX_ENTITIES || !entity_active[e]) return;
     billboards[e] = 1;
+}
+
+void add_debug_line(Entity e) {
+    if (e >= MAX_ENTITIES || !entity_active[e]) return;
+    debug_lines[e] = 1;
 }
 
 void fps_controller_event_system(AppState* state, SDL_Event* event) {

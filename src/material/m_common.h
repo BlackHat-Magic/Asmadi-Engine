@@ -12,4 +12,4 @@ int set_vertex_shader (SDL_GPUDevice* device, MaterialComponent* mat, const char
 
 int set_fragment_shader (SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath, SDL_GPUTextureFormat swapchain_format);
 
-static int build_pipeline (SDL_GPUDevice* device, MaterialComponent* mat, SDL_GPUTextureFormat swapchain_format);
+static int build_pipeline (SDL_GPUDevice* device, MaterialComponent* mat, SDL_GPUTextureFormat swapchain_format, SDL_GPUPrimitiveType primitive_type);
