@@ -12,17 +12,16 @@ oh wow this is getting complicated fast
     [X] ~~Cylinder~~
     [ ] Dodecahedron
     [ ] Extrude
-    [ ] Icosahedron
+    [X] ~~Icosahedron~~
     [X] ~~Lathe~~
-    [ ] Octahedron
-    [ ] Polyhedron?
+    [X] ~~Octahedron~~
     [X] ~~Ring~~
     [ ] Shape
     [X] ~~Sphere~~
     [ ] Ico Sphere
     [ ] That one other sphere... you know the one
-    [ ] Tetrahedron
-    [ ] Torus
+    [X] ~~Tetrahedron~~
+    [X] ~~Torus~~
     [ ] Torus Knot?
     [ ] Tube
 [ ] Math
@@ -45,3 +44,4 @@ oh wow this is getting complicated fast
     [ ] Toon Material
 [ ] Controllers
 [ ] Physics
+[ ] UV Mapping for Mesh Primitives

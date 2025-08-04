@@ -6,6 +6,7 @@
 #include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_timer.h>
 #include "geometry/cylinder.h"
+#include "geometry/tetrahedron.h"
 #define SDL_MAIN_USE_CALLBACKS 1
 
 #include <SDL3/SDL.h>
@@ -21,10 +22,14 @@
 #include "geometry/capsule.h"
 #include "geometry/circle.h"
 #include "geometry/cone.h"
+// #include "geometry/dodecahedron.h"
+#include "geometry/icosahedron.h"
+#include "geometry/octahedron.h"
 #include "geometry/plane.h"
 #include "geometry/ring.h"
 #include "geometry/sphere.h"
 #include "geometry/torus.h"
+#include "geometry/tetrahedron.h"
 #include "material/m_common.h"
 #include "material/basic_material.h"
 #include "math/matrix.h"
@@ -268,6 +273,56 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     add_material(torus, torus_material);
     // transform
     add_transform(torus, (vec3){8.0f, 2.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // tetrahedron
+    Entity tetrahedron = create_entity();
+    // mesh
+    MeshComponent* tetrahedron_mesh = create_tetrahedron_mesh(0.5f, state->device);
+    if (tetrahedron_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh(tetrahedron, tetrahedron_mesh);
+    // material
+    MaterialComponent tetrahedron_material = create_basic_material((vec3){0.0f, 0.5f, 0.0f}, SIDE_FRONT, state);
+    add_material(tetrahedron, tetrahedron_material);
+    // transform
+    add_transform(tetrahedron, (vec3){0.0f, 4.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // octahedron
+    Entity octahedron = create_entity();
+    // mesh
+    MeshComponent* octahedron_mesh = create_octahedron_mesh(0.5f, state->device);
+    if (octahedron_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh (octahedron, octahedron_mesh);
+    // material
+    MaterialComponent octahedron_material = create_basic_material ((vec3){0.5f, 0.5f, 0.0f}, SIDE_FRONT, state);
+    add_material(octahedron, octahedron_material);
+    // transform
+    add_transform(octahedron, (vec3){2.0f, 4.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    /*
+    // dodecahedron
+    Entity dodecahedron = create_entity();
+    // mesh
+    MeshComponent* dodecahedron_mesh = create_dodecahedron_mesh(0.5f, state->device);
+    if (dodecahedron_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh (dodecahedron, dodecahedron_mesh);
+    // material
+    MaterialComponent dodecahedron_material = create_basic_material ((vec3){0.0f, 0.0f, 0.5f}, SIDE_FRONT, state);
+    add_material(dodecahedron, dodecahedron_material);
+    // transform
+    add_transform(dodecahedron, (vec3){4.0f, 4.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+    */
+
+    // octahedron
+    Entity icosahedron = create_entity();
+    // mesh
+    MeshComponent* icosahedron_mesh = create_icosahedron_mesh(0.5f, state->device);
+    if (icosahedron_mesh == NULL) return SDL_APP_FAILURE;
+    add_mesh (icosahedron, icosahedron_mesh);
+    // material
+    MaterialComponent icosahedron_material = create_basic_material ((vec3){0.5f, 0.0f, 0.5f}, SIDE_FRONT, state);
+    add_material(icosahedron, icosahedron_material);
+    // transform
+    add_transform(icosahedron, (vec3){6.0f, 4.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
 
     // camera
     Entity camera = create_entity();

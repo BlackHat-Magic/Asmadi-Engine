@@ -47,10 +47,14 @@ add_executable(space-pirates
     src/geometry/circle.c
     src/geometry/cone.c
     src/geometry/cylinder.c
+    src/geometry/dodecahedron.c
+    src/geometry/icosahedron.c
     src/geometry/lathe.c
+    src/geometry/octahedron.c
     src/geometry/plane.c
     src/geometry/ring.c
     src/geometry/sphere.c
+    src/geometry/tetrahedron.c
     src/geometry/torus.c
     src/material/m_common.c
     src/material/basic_material.c
