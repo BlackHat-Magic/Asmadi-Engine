@@ -12,6 +12,7 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_video.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "core/appstate.h"
 #include "ecs/ecs.h"
@@ -19,6 +20,7 @@
 #include "geometry/capsule.h"
 #include "geometry/circle.h"
 #include "geometry/plane.h"
+#include "geometry/cone.h"
 #include "material/m_common.h"
 #include "material/basic_material.h"
 #include "math/matrix.h"
@@ -134,89 +136,86 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     }
 
     // create box entity
-    vec3 transforms[] = {
-        {0.0f, 0.0f, 0.0f},
-        {2.0f, 0.0f, 0.0f},
-        {3.0f, 4.0f, 0.0f},
-        {0.0f, 0.0f, 5.0f},
-        {-2.0f, 0.0f, -3.0f},
-        {-4.0f, -5.0f, 1.0f},
-        {0.0f, 0.0f, 2.0f},
-        {0.0f, 3.0f, 0.0f},
-        {0.0f, 4.0f, 5.0f},
-        {-2.0f, 0.0f, 0.0f}
-    };
-    for (int i = 0; i < 10; i++) {
-        Entity box              = create_entity();
+    Entity box = create_entity();
+    // create box mesh
+    MeshComponent* box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
+    if (box_mesh == NULL)
+        return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
+    add_mesh(box, box_mesh);
+    // create box material
+    MaterialComponent box_material =
+        create_basic_material((vec3){1.0f, 0.0f, 0.0f}, SIDE_FRONT, state);
+    add_material(box, box_material);
+    // box transform
+    add_transform(
+        box, (vec3) {0.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f},
+        (vec3){1.0f, 1.0f, 1.0f}
+    );
 
-        // create box mesh
-        MeshComponent* box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
-        if (box_mesh == NULL)
-            return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
-        add_mesh(box, box_mesh);
-
-        // create box material
-        MaterialComponent box_material =
-            create_basic_material((vec3){1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
-
-        // texture
-        if (i % 2 == 1) {
-            box_material.texture = load_texture(state->device, "assets/test.png");
-        }
-
-        // apply box material
-        add_material(box, box_material);
-        add_transform(
-            box, transforms[i], (vec3){0.0f, 0.0f, 0.0f},
-            (vec3){1.0f, 1.0f, 1.0f}
-        );
-    }
+    // textured box
+    Entity tbox = create_entity();
+    // texutred box mesh
+    MeshComponent* tbox_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
+    if (box_mesh == NULL)
+        return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
+    add_mesh(tbox, tbox_mesh);
+    // textured box material
+    MaterialComponent tbox_material =
+        create_basic_material((vec3){1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
+    tbox_material.texture = load_texture(state->device, "assets/test.png");
+    if (tbox_material.texture == NULL) return SDL_APP_FAILURE;
+    add_material(tbox, tbox_material);
+    // textured box transform
+    add_transform(
+        tbox, (vec3) {2.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f},
+        (vec3){1.0f, 1.0f, 1.0f}
+    );
 
     // billboard
     Entity billboard = create_entity();
+    add_billboard(billboard);
+    // billboard mesh
     MeshComponent* billboard_mesh = create_plane_mesh(1.0f, 1.0f, 1, 1, state->device);
     if (billboard_mesh == NULL) return SDL_APP_FAILURE; // logging handled inside function
     add_mesh(billboard, billboard_mesh);
-
     // billboard material
     MaterialComponent billboard_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
     billboard_material.texture = load_texture(state->device, "assets/test.bmp");
-    if (billboard_material.texture == NULL) {
-        SDL_Log ("Unable to load billboard texture: %s", SDL_GetError ());
-        return SDL_APP_FAILURE;
-    }
+    if (billboard_material.texture == NULL) return SDL_APP_FAILURE;
     add_material(billboard, billboard_material);
-
     // billboard transform
-    add_transform(billboard, (vec3){7.0f, 7.0f, 7.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
-
-    // add billboard flag
-    add_billboard(billboard);
+    add_transform(billboard, (vec3){4.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
 
     // capsule
     Entity capsule = create_entity();
-    MeshComponent* capsule_mesh = create_capsule_mesh (1.0f, 2.0f, 8, 16, state->device);
+    MeshComponent* capsule_mesh = create_capsule_mesh (0.5f, 1.0f, 8, 16, state->device);
     if (!capsule_mesh) return SDL_APP_FAILURE;
     add_mesh(capsule, capsule_mesh);
-
     // capsule material
     MaterialComponent capsule_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
     add_material (capsule, capsule_material);
-
     // capsule transform
-    add_transform(capsule, (vec3) {0.0f, 10.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
-
+    add_transform(capsule, (vec3) {6.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
     // circle
     Entity circle = create_entity();
     MeshComponent* circle_mesh = create_circle_mesh (0.5f, 16, state->device);
     add_mesh(circle, circle_mesh);
-
     // circle material
     MaterialComponent circle_material = create_basic_material ((vec3) {0.0f, 1.0f, 1.0f}, SIDE_DOUBLE, state);
     add_material(circle, circle_material);
-
     // circle transform
-    add_transform (circle, (vec3) {0.0f, 6.0f, 0.0f}, (vec3) {0.0f, 0.0f, 0.0f}, (vec3) {1.0f, 1.0f, 1.0f});
+    add_transform (circle, (vec3) {8.0f, 0.0f, 0.0f}, (vec3) {0.0f, 0.0f, 0.0f}, (vec3) {1.0f, 1.0f, 1.0f});
+
+    // cone
+    Entity cone = create_entity();
+    // cone mesh
+    MeshComponent* cone_mesh = create_cone_mesh (0.5f, 1.0f, 16, 1, false, 0.0f, (float)M_PI * 2.0f, state->device);
+    add_mesh(cone, cone_mesh);
+    // cone material
+    MaterialComponent cone_material = create_basic_material ((vec3) {1.0f, 0.0f, 1.0f}, SIDE_FRONT, state);
+    add_material (cone, cone_material);
+    // cone transform
+    add_transform (cone, (vec3) {0.0f, 2.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
 
     // camera
     Entity camera = create_entity();

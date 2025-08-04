@@ -45,6 +45,7 @@ add_executable(space-pirates
     src/geometry/box.c
     src/geometry/capsule.c
     src/geometry/circle.c
+    src/geometry/cone.c
     src/geometry/lathe.c
     src/geometry/plane.c
     src/material/m_common.c

@@ -8,7 +8,7 @@ oh wow this is getting complicated fast
     [X] ~~Plane~~
     [X] ~~Capsule~~
     [X] ~~Circle~~
-    [ ] Cone
+    [X] ~~Cone~~
     [ ] Cylinder
     [ ] Dodecahedron
     [ ] Extrude
