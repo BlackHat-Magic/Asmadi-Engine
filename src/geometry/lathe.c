@@ -37,7 +37,7 @@ MeshComponent* create_lathe_mesh(
         float sin_phi = sinf(phi);
 
         for (int j = 0; j < num_points; j++) {
-            float v = (float)j / (float)(num_points - 1);
+            float v = 1.0f - (float)j / (float)(num_points - 1);
 
             // 3D position: rotate around Y (x,z plane)
             float x = points[j].x * sin_phi;
@@ -48,7 +48,7 @@ MeshComponent* create_lathe_mesh(
             vertices[vertex_idx++] = y;
             vertices[vertex_idx++] = z;
             vertices[vertex_idx++] = u;  // UV u: around
-            vertices[vertex_idx++] = v;  // UV v: along path (flip if textures invert)
+            vertices[vertex_idx++] = v;  // UV v: along path
         }
     }
 

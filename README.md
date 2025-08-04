@@ -18,7 +18,7 @@ oh wow this is getting complicated fast
     [ ] Polyhedron?
     [X] ~~Ring~~
     [ ] Shape
-    [ ] Sphere
+    [X] ~~Sphere~~
     [ ] Ico Sphere
     [ ] That one other sphere... you know the one
     [ ] Tetrahedron
