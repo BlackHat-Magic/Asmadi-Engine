@@ -9,7 +9,7 @@ oh wow this is getting complicated fast
     [X] ~~Capsule~~
     [X] ~~Circle~~
     [X] ~~Cone~~
-    [ ] Cylinder
+    [X] ~~Cylinder~~
     [ ] Dodecahedron
     [ ] Extrude
     [ ] Icosahedron

@@ -5,6 +5,7 @@
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_timer.h>
+#include "geometry/cylinder.h"
 #define SDL_MAIN_USE_CALLBACKS 1
 
 #include <SDL3/SDL.h>
@@ -192,16 +193,17 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     if (!capsule_mesh) return SDL_APP_FAILURE;
     add_mesh(capsule, capsule_mesh);
     // capsule material
-    MaterialComponent capsule_material = create_basic_material ((vec3) {1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
+    MaterialComponent capsule_material = create_basic_material ((vec3) {0.0f, 1.0f, 0.0f}, SIDE_FRONT, state);
     add_material (capsule, capsule_material);
     // capsule transform
     add_transform(capsule, (vec3) {6.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
     // circle
     Entity circle = create_entity();
     MeshComponent* circle_mesh = create_circle_mesh (0.5f, 16, state->device);
     add_mesh(circle, circle_mesh);
     // circle material
-    MaterialComponent circle_material = create_basic_material ((vec3) {0.0f, 1.0f, 1.0f}, SIDE_DOUBLE, state);
+    MaterialComponent circle_material = create_basic_material ((vec3) {1.0f, 1.0f, 0.0f}, SIDE_DOUBLE, state);
     add_material(circle, circle_material);
     // circle transform
     add_transform (circle, (vec3) {8.0f, 0.0f, 0.0f}, (vec3) {0.0f, 0.0f, 0.0f}, (vec3) {1.0f, 1.0f, 1.0f});
@@ -212,10 +214,21 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     MeshComponent* cone_mesh = create_cone_mesh (0.5f, 1.0f, 16, 1, false, 0.0f, (float)M_PI * 2.0f, state->device);
     add_mesh(cone, cone_mesh);
     // cone material
-    MaterialComponent cone_material = create_basic_material ((vec3) {1.0f, 0.0f, 1.0f}, SIDE_FRONT, state);
+    MaterialComponent cone_material = create_basic_material ((vec3) {0.0f, 0.0f, 1.0f}, SIDE_FRONT, state);
     add_material (cone, cone_material);
     // cone transform
     add_transform (cone, (vec3) {0.0f, 2.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+
+    // cylinder
+    Entity cylinder = create_entity();
+    // cylinder mesh
+    MeshComponent* cylinder_mesh = create_cylinder_mesh(0.5f, 0.5f, 1.0f, 16, 1, false, 0.0f, (float)M_PI * 2.0f, state->device);
+    add_mesh(cylinder, cylinder_mesh);
+    // cylinder material
+    MaterialComponent cylinder_material = create_basic_material((vec3) {1.0f, 0.0f, 1.0f}, SIDE_FRONT, state);
+    add_material(cylinder, cylinder_material);
+    // cylinder transform
+    add_transform (cylinder, (vec3) {2.0f, 2.0f, 0.0f}, (vec3) {0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
 
     // camera
     Entity camera = create_entity();
