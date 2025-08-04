@@ -10,7 +10,7 @@ oh wow this is getting complicated fast
     [X] ~~Circle~~
     [X] ~~Cone~~
     [X] ~~Cylinder~~
-    [ ] Dodecahedron
+    [X] ~~Dodecahedron~~
     [ ] Extrude
     [X] ~~Icosahedron~~
     [X] ~~Lathe~~

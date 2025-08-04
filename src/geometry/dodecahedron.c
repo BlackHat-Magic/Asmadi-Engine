@@ -1,96 +1,85 @@
+// src/geometry/dodecahedron.c
+
 #include "geometry/dodecahedron.h"
 
 #include <math.h>
 #include <stdlib.h>
 
+#include "ecs/ecs.h"
 #include "geometry/g_common.h"
 #include "math/matrix.h"
 
 MeshComponent* create_dodecahedron_mesh(float radius, SDL_GPUDevice* device) {
-    const int num_vertices = 20;
-    float vertices[20 * 5] = {0};
     float phi = (1.0f + sqrtf(5.0f)) / 2.0f;
-    float inv_phi = 1.0f / phi;
-    vec3 pos[20] = {
-        {0.0f, inv_phi, phi},     // 0
-        {0.0f, -inv_phi, phi},    // 1
-        {0.0f, -inv_phi, -phi},   // 2
-        {0.0f, inv_phi, -phi},    // 3
-        {phi, 0.0f, inv_phi},     // 4
-        {-phi, 0.0f, inv_phi},    // 5
-        {-phi, 0.0f, -inv_phi},   // 6
-        {phi, 0.0f, -inv_phi},    // 7
-        {inv_phi, phi, 0.0f},     // 8
-        {-inv_phi, phi, 0.0f},    // 9
-        {-inv_phi, -phi, 0.0f},   // 10
-        {inv_phi, -phi, 0.0f},    // 11
-        {1.0f, 1.0f, 1.0f},       // 12
-        {-1.0f, 1.0f, 1.0f},      // 13
-        {-1.0f, -1.0f, 1.0f},     // 14
-        {1.0f, -1.0f, 1.0f},      // 15
-        {1.0f, -1.0f, -1.0f},     // 16
-        {1.0f, 1.0f, -1.0f},      // 17
-        {-1.0f, 1.0f, -1.0f},     // 18
-        {-1.0f, -1.0f, -1.0f}     // 19
+    float phi_inv = 1.0f / phi;
+
+    float raw_verts[20 * 3] = {
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, -1.0f,
+        phi_inv, phi, 0.0f,
+        -phi_inv, phi, 0.0f,
+        phi_inv, -phi, 0.0f,
+        -phi_inv, -phi, 0.0f,
+        phi, 0.0f, phi_inv,
+        phi, 0.0f, -phi_inv,
+        -phi, 0.0f, phi_inv,
+        -phi, 0.0f, -phi_inv,
+        0.0f, phi_inv, phi,
+        0.0f, -phi_inv, phi,
+        0.0f, phi_inv, -phi,
+        0.0f, -phi_inv, -phi
     };
 
-    for (int i = 0; i < 20; i++) {
-        pos[i] = vec3_normalize(pos[i]);
-        pos[i] = vec3_scale(pos[i], radius);
-        vertices[i * 5 + 0] = pos[i].x;
-        vertices[i * 5 + 1] = pos[i].y;
-        vertices[i * 5 + 2] = pos[i].z;
-
-        // Spherical UV mapping
-        float u = 0.5f + atan2f(pos[i].z, pos[i].x) / (2.0f * (float)M_PI);
-        float v = acosf(pos[i].y) / (float)M_PI;
-        vertices[i * 5 + 3] = u;
-        vertices[i * 5 + 4] = v;
+    int num_vertices = 20;
+    float* vertices = (float*)malloc(num_vertices * 5 * sizeof(float));
+    if (!vertices) {
+        SDL_Log("Failed to allocate vertices for dodecahedron mesh");
+        return NULL;
     }
 
-    // 12 pentagons (clockwise winding for outwards normals, matching engine config)
-    uint16_t pentagons[12 * 5] = {
-        0, 1, 15, 4, 12,    // Face 0 (CW)
-        0, 13, 9, 8, 12,    // Face 1
-        0, 1, 14, 5, 13,    // Face 2
-        1, 15, 11, 10, 14,  // Face 3
-        2, 16, 7, 17, 3,    // Face 4
-        2, 19, 10, 11, 16,  // Face 5
-        2, 3, 18, 6, 19,    // Face 6
-        3, 17, 8, 9, 18,    // Face 7
-        15, 4, 7, 16, 11,   // Face 8
-        4, 12, 8, 17, 7,    // Face 9
-        13, 5, 6, 18, 9,    // Face 10
-        5, 14, 10, 19, 6    // Face 11
+    int vertex_idx = 0;
+    for (int i = 0; i < num_vertices; i++) {
+        vec3 pos = {raw_verts[i * 3], raw_verts[i * 3 + 1], raw_verts[i * 3 + 2]};
+        float len = sqrtf(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
+        pos = vec3_scale(pos, radius / len);
+
+        vertices[vertex_idx++] = pos.x;
+        vertices[vertex_idx++] = pos.y;
+        vertices[vertex_idx++] = pos.z;
+        vertices[vertex_idx++] = 0.5f + atan2f(pos.z, pos.x) / (2.0f * (float)M_PI);
+        vertices[vertex_idx++] = acosf(pos.y) / (float)M_PI;
+    }
+
+    int num_indices = 108;
+    uint16_t indices[108] = {
+        1, 8, 0, 0, 12, 13, 13, 1, 0,
+        4, 9, 5, 5, 15, 14, 14, 4, 5,
+        2, 10, 3, 3, 13, 12, 12, 2, 3,
+        7, 11, 6, 6, 14, 15, 15, 7, 6,
+        2, 12, 0, 0, 16, 17, 17, 2, 0,
+        1, 13, 3, 3, 19, 18, 18, 1, 3,
+        4, 14, 6, 6, 17, 16, 16, 4, 6,
+        7, 15, 5, 5, 18, 19, 19, 7, 5,
+        4, 16, 0, 0, 8, 9, 9, 4, 0,
+        2, 17, 6, 6, 11, 10, 10, 2, 6,
+        1, 18, 5, 5, 9, 8, 8, 1, 5,
+        7, 19, 3, 3, 10, 11, 11, 7, 3
     };
-
-    // 108 indices: 12 pentagons * 3 triangles * 3 verts (fan triangulation)
-    uint16_t indices[108] = {0};
-    int idx = 0;
-    for (int p = 0; p < 12; p++) {
-        uint16_t v0 = pentagons[p * 5 + 0];
-        uint16_t v1 = pentagons[p * 5 + 1];
-        uint16_t v2 = pentagons[p * 5 + 2];
-        uint16_t v3 = pentagons[p * 5 + 3];
-        uint16_t v4 = pentagons[p * 5 + 4];
-        indices[idx++] = v0;
-        indices[idx++] = v1;
-        indices[idx++] = v2;
-        indices[idx++] = v0;
-        indices[idx++] = v2;
-        indices[idx++] = v3;
-        indices[idx++] = v0;
-        indices[idx++] = v3;
-        indices[idx++] = v4;
-    }
 
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = sizeof(vertices);
+    size_t vertices_size = num_vertices * 5 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
+    free(vertices);
     if (vbo_failed) return NULL;
 
     SDL_GPUBuffer* ibo = NULL;
-    size_t indices_size = sizeof(indices);
+    size_t indices_size = num_indices * sizeof(uint16_t);
     int ibo_failed = upload_indices(device, indices, indices_size, &ibo);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);
@@ -99,6 +88,7 @@ MeshComponent* create_dodecahedron_mesh(float radius, SDL_GPUDevice* device) {
 
     MeshComponent* out_mesh = (MeshComponent*)malloc(sizeof(MeshComponent));
     if (!out_mesh) {
+        SDL_Log("Failed to allocate MeshComponent for dodecahedron");
         SDL_ReleaseGPUBuffer(device, vbo);
         SDL_ReleaseGPUBuffer(device, ibo);
         return NULL;
@@ -107,7 +97,7 @@ MeshComponent* create_dodecahedron_mesh(float radius, SDL_GPUDevice* device) {
         .vertex_buffer = vbo,
         .num_vertices = (uint32_t)num_vertices,
         .index_buffer = ibo,
-        .num_indices = 108,
+        .num_indices = (uint32_t)num_indices,
         .index_size = SDL_GPU_INDEXELEMENTSIZE_16BIT
     };
 

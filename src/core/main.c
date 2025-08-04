@@ -22,7 +22,7 @@
 #include "geometry/capsule.h"
 #include "geometry/circle.h"
 #include "geometry/cone.h"
-// #include "geometry/dodecahedron.h"
+#include "geometry/dodecahedron.h"
 #include "geometry/icosahedron.h"
 #include "geometry/octahedron.h"
 #include "geometry/plane.h"
@@ -298,7 +298,6 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // transform
     add_transform(octahedron, (vec3){2.0f, 4.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
 
-    /*
     // dodecahedron
     Entity dodecahedron = create_entity();
     // mesh
@@ -310,7 +309,6 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     add_material(dodecahedron, dodecahedron_material);
     // transform
     add_transform(dodecahedron, (vec3){4.0f, 4.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
-    */
 
     // octahedron
     Entity icosahedron = create_entity();
