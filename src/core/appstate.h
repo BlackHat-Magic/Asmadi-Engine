@@ -14,7 +14,7 @@ typedef struct {
 
     // GPU stuff
     SDL_GPUDevice* device;
-    SDL_GPUTexture* texture;
+    SDL_GPUTexture* white_texture; // for solid-color objects
     SDL_GPUSampler* sampler;
     SDL_GPUTexture* depth_texture;
     SDL_GPUTextureFormat swapchain_format;

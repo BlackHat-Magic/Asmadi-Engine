@@ -280,12 +280,11 @@ SDL_AppResult render_system(AppState* state) {
         memcpy(ubo.view, view, sizeof(mat4));
         memcpy(ubo.proj, proj, sizeof(mat4));
         // Colors: use material.color (shader uses colors[3])
-        for (int i = 0; i < 3; i++) {
-            ubo.colors[i][0] = materials[e].color.x;
-            ubo.colors[i][1] = materials[e].color.y;
-            ubo.colors[i][2] = materials[e].color.z;
-            ubo.colors[i][3] = 0.0f; // padding
-        }
+        ubo.color.w = materials[e].color.x;
+        ubo.color.x = materials[e].color.y;
+        ubo.color.y = materials[e].color.z;
+        ubo.color.z = 1.0f; // alpha 1.0
+
 
         if (materials[e].pipeline) {
             SDL_BindGPUGraphicsPipeline(pass, materials[e].pipeline);
@@ -297,7 +296,7 @@ SDL_AppResult render_system(AppState* state) {
 
         SDL_GPUTextureSamplerBinding tex_bind = {
             .texture =
-                materials[e].texture ? materials[e].texture : state->texture,
+                materials[e].texture ? materials[e].texture : state->white_texture,
             .sampler = state->sampler
         };
         SDL_BindGPUFragmentSamplers(pass, 0, &tex_bind, 1);
