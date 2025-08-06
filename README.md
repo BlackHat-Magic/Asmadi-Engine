@@ -42,13 +42,9 @@ oh wow this is getting complicated fast
     - [ ] Phong Material
     - [ ] Standard/Physical Material
     - [ ] Toon Material
-- [ ] Lighting
-    - [ ] Phong Shading
-    - [ ] Lambertian Diffuse
-    - [ ] PBR? (this list is super rudamentary)
 - [ ] Materials
     - [X] ~~MeshBasicMaterial~~
-    - [ ] MeshPhongMaterial
+    - [X] ~~MeshPhongMaterial~~
     - [ ] MeshLambertMaterial
     - [ ] MeshDepthMaterial
 - [ ] Controllers
