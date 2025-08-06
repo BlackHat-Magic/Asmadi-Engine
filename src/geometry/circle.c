@@ -20,7 +20,7 @@ MeshComponent* create_circle_mesh(float radius, int segments, SDL_GPUDevice* dev
         return NULL;
     }
 
-    float* vertices = (float*)malloc(num_vertices * 5 * sizeof(float));  // pos.x,y,z + uv.u,v
+    float* vertices = (float*)malloc(num_vertices * 8 * sizeof(float));  // pos.x,y,z + normal.x,y,z + uv.u,v
     if (!vertices) {
         SDL_Log("Failed to allocate vertices for circle mesh");
         return NULL;
@@ -38,6 +38,9 @@ MeshComponent* create_circle_mesh(float radius, int segments, SDL_GPUDevice* dev
     vertices[vertex_idx++] = 0.0f;  // x
     vertices[vertex_idx++] = 0.0f;  // y
     vertices[vertex_idx++] = 0.0f;  // z
+    vertices[vertex_idx++] = 0.0f;  // nx
+    vertices[vertex_idx++] = 0.0f;  // ny
+    vertices[vertex_idx++] = 1.0f;  // nz
     vertices[vertex_idx++] = 0.5f;  // u
     vertices[vertex_idx++] = 0.5f;  // v
 
@@ -50,6 +53,9 @@ MeshComponent* create_circle_mesh(float radius, int segments, SDL_GPUDevice* dev
         vertices[vertex_idx++] = radius * cos_theta;
         vertices[vertex_idx++] = radius * sin_theta;
         vertices[vertex_idx++] = 0.0f;
+        vertices[vertex_idx++] = 0.0f;  // nx
+        vertices[vertex_idx++] = 0.0f;  // ny
+        vertices[vertex_idx++] = 1.0f;  // nz
         vertices[vertex_idx++] = 0.5f + 0.5f * cos_theta;
         vertices[vertex_idx++] = 0.5f + 0.5f * sin_theta;  // Note: may need to flip v (1.0f - ...) based on texture orientation
     }
@@ -64,7 +70,7 @@ MeshComponent* create_circle_mesh(float radius, int segments, SDL_GPUDevice* dev
 
     // Upload to GPU
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 5 * sizeof(float);
+    size_t vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     free(vertices);
     if (vbo_failed) {

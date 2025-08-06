@@ -30,6 +30,7 @@ MeshComponent* create_sphere_mesh(
         points[i].y = radius * cosf(theta);
     }
 
+    // lathe returns normals
     MeshComponent* mesh = create_lathe_mesh(points, num_points, width_segments, phi_start, phi_length, device);
     free(points);
     return mesh;

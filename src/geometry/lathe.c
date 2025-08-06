@@ -4,24 +4,31 @@
 #include <stdlib.h>
 
 #include "geometry/g_common.h"
+#include "math/matrix.h"
 
 MeshComponent* create_lathe_mesh(
-    vec2* points, int num_points, int radial_segments,
+    vec2* points, int num_points, int phi_segments,
     float phi_start, float phi_length, SDL_GPUDevice* device
 ) {
-    if (num_points < 2 || radial_segments < 1) {
-        SDL_Log("Invalid lathe parameters: need at least 2 points and 1 radial segment");
+    if (num_points < 2) {
+        SDL_Log("Lathe requires at least 2 points");
+        return NULL;
+    }
+    if (phi_segments < 3) {
+        SDL_Log("Lathe requires at least 3 phi segments");
         return NULL;
     }
 
-    // Vertex count: (radial_segments + 1) radials x num_points axials
-    int num_vertices = (radial_segments + 1) * num_points;
-    if (num_vertices > 65535) {  // uint16_t index limit; extend to uint32_t if needed
+    int num_phi = phi_segments + 1;  // Rings closed
+    int num_vertices = num_points * num_phi;
+
+    // Check for uint16_t overflow (max 65535 verts); extend to uint32_t if needed later
+    if (num_vertices > 65535) {
         SDL_Log("Lathe mesh too large for uint16_t indices");
         return NULL;
     }
 
-    float* vertices = (float*)malloc(num_vertices * 5 * sizeof(float));  // pos.x,y,z + uv.u,v
+    float* vertices = (float*)malloc(num_vertices * 8 * sizeof(float));  // pos.x,y,z + normal.x,y,z + uv.u,v
     if (!vertices) {
         SDL_Log("Failed to allocate vertices for lathe mesh");
         return NULL;
@@ -29,31 +36,36 @@ MeshComponent* create_lathe_mesh(
 
     // Generate vertices
     int vertex_idx = 0;
-    for (int i = 0; i <= radial_segments; i++) {
-        float u = (float)i / (float)radial_segments;
-        float phi = phi_start + u * phi_length;
+    for (int i = 0; i < num_points; i++) {
+        float u = (float)i / (float)(num_points - 1);  // Axial UV
 
-        float cos_phi = cosf(phi);
-        float sin_phi = sinf(phi);
+        for (int j = 0; j < num_phi; j++) {
+            float phi_frac = (float)j / (float)phi_segments;
+            float phi = phi_start + phi_frac * phi_length;
+            float cos_phi = cosf(phi);
+            float sin_phi = sinf(phi);
 
-        for (int j = 0; j < num_points; j++) {
-            float v = 1.0f - (float)j / (float)(num_points - 1);
+            // Position: rotate point around Y (points.x is radius, points.y is height)
+            float x = points[i].x * cos_phi;
+            float y = points[i].y;
+            float z = points[i].x * sin_phi;
 
-            // 3D position: rotate around Y (x,z plane)
-            float x = points[j].x * sin_phi;
-            float y = points[j].y;
-            float z = points[j].x * -cos_phi;  // Flipped to reverse rotation direction for clockwise winding
+            // UV: u along path, v around phi (0-1)
+            float v = phi_frac;
 
             vertices[vertex_idx++] = x;
             vertices[vertex_idx++] = y;
             vertices[vertex_idx++] = z;
-            vertices[vertex_idx++] = u;  // UV u: around
-            vertices[vertex_idx++] = v;  // UV v: along path
+            vertices[vertex_idx++] = 0.0f;  // nx (placeholder)
+            vertices[vertex_idx++] = 0.0f;  // ny
+            vertices[vertex_idx++] = 0.0f;  // nz
+            vertices[vertex_idx++] = v;     // Note: may need to flip u/v based on convention
+            vertices[vertex_idx++] = u;
         }
     }
 
-    // Index count: radial_segments x (num_points - 1) x 6 (two tris per quad)
-    int num_indices = radial_segments * (num_points - 1) * 6;
+    // Generate indices (quads between rings, flipped winding for outward faces)
+    int num_indices = (num_points - 1) * phi_segments * 6;
     uint16_t* indices = (uint16_t*)malloc(num_indices * sizeof(uint16_t));
     if (!indices) {
         SDL_Log("Failed to allocate indices for lathe mesh");
@@ -61,35 +73,36 @@ MeshComponent* create_lathe_mesh(
         return NULL;
     }
 
-    // Generate indices (clockwise winding, like your box/plane)
     int index_idx = 0;
-    for (int i = 0; i < radial_segments; i++) {
-        for (int j = 0; j < num_points - 1; j++) {
-            uint16_t a = (uint16_t)(i * num_points + j);
-            uint16_t b = (uint16_t)(i * num_points + (j + 1));
-            uint16_t c = (uint16_t)((i + 1) * num_points + (j + 1));
-            uint16_t d = (uint16_t)((i + 1) * num_points + j);
+    for (int i = 0; i < num_points - 1; i++) {
+        for (int j = 0; j < phi_segments; j++) {
+            uint16_t a = (uint16_t)(i * num_phi + j);
+            uint16_t b = (uint16_t)(i * num_phi + (j + 1) % phi_segments);  // Wrap phi
+            uint16_t c = (uint16_t)((i + 1) * num_phi + (j + 1) % phi_segments);
+            uint16_t d = (uint16_t)((i + 1) * num_phi + j);
 
-            // Triangle 1: a -> b -> c (clockwise)
+            // Flipped winding: a -> c -> b and a -> d -> c (counterclockwise if original was clockwise)
             indices[index_idx++] = a;
+            indices[index_idx++] = c;
             indices[index_idx++] = b;
-            indices[index_idx++] = c;
 
-            // Triangle 2: a -> c -> d (clockwise)
             indices[index_idx++] = a;
-            indices[index_idx++] = c;
             indices[index_idx++] = d;
+            indices[index_idx++] = c;
         }
     }
 
+    // Compute normals
+    compute_vertex_normals(vertices, num_vertices, indices, num_indices, 8, 0, 3);
+
     // Upload to GPU
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 5 * sizeof(float);
+    size_t vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     free(vertices);
     if (vbo_failed) {
         free(indices);
-        return NULL;  // Logging in upload_vertices
+        return NULL;  // Logging handled in upload_vertices
     }
 
     SDL_GPUBuffer* ibo = NULL;
@@ -98,7 +111,7 @@ MeshComponent* create_lathe_mesh(
     free(indices);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);
-        return NULL;  // Logging in upload_indices
+        return NULL;  // Logging handled in upload_indices
     }
 
     MeshComponent* out_mesh = (MeshComponent*)malloc(sizeof(MeshComponent));

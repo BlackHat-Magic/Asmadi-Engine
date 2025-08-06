@@ -42,6 +42,11 @@ oh wow this is getting complicated fast
     - [ ] Phong Material
     - [ ] Standard/Physical Material
     - [ ] Toon Material
+- [ ] Materials
+    - [X] ~~MeshBasicMaterial~~
+    - [X] ~~MeshPhongMaterial~~
+    - [ ] MeshLambertMaterial
+    - [ ] MeshDepthMaterial
 - [ ] Controllers
 - [ ] Physics
 - [ ] UV Mapping for Mesh Primitives

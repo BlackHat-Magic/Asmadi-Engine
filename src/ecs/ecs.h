@@ -7,6 +7,7 @@
 
 // TODO: More robust max entities
 #define MAX_ENTITIES 1024
+#define MAX_LIGHTS 64
 
 typedef enum {
     SIDE_FRONT,
@@ -19,6 +20,11 @@ typedef struct {
     float model[16];
     float view[16];
     float proj[16];
+    // TODO: support more than one light
+    vec4 ambient_color[MAX_LIGHTS]; // RGB + Strength
+    vec4 point_light_pos[MAX_LIGHTS]; // xyz + padding (16-byte aligned)
+    vec4 point_light_color[MAX_LIGHTS]; // RGB + Strength
+    vec4 camera_pos;
 } UBOData;
 
 typedef uint32_t Entity;
@@ -62,6 +68,10 @@ typedef struct {
 typedef uint8_t BillboardComponent;
 // typedef struct {} BillboardComponent;
 
+typedef vec4 AmbientLightComponent;
+
+typedef vec4 PointLightComponent; // position is another component
+
 // TODO: colliders
 
 // ECS storage arrays per component type (sparse; use entity as index)
@@ -71,6 +81,8 @@ extern MaterialComponent materials[MAX_ENTITIES];
 extern CameraComponent cameras[MAX_ENTITIES];
 extern FpsCameraControllerComponent fps_controllers[MAX_ENTITIES];
 extern BillboardComponent billboards[MAX_ENTITIES];
+extern AmbientLightComponent ambient_lights[MAX_ENTITIES];
+extern PointLightComponent point_lights[MAX_ENTITIES];
 extern uint8_t entity_active[MAX_ENTITIES];
 
 // API
@@ -84,6 +96,8 @@ void add_material (Entity e, MaterialComponent material);
 void add_camera (Entity e, float fov, float near_clip, float far_clip);
 void add_fps_controller(Entity e, float sense, float speed);
 void add_billboard(Entity e);
+void add_ambient_light(Entity e, vec3 rgb, float brightness);
+void add_point_light (Entity e, vec3 rgb, float brightness);
 
 void fps_controller_event_system(AppState* state, SDL_Event*);
 void fps_controller_update_system(AppState* state, float dt);

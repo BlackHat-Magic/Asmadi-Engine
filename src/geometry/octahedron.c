@@ -9,7 +9,7 @@
 
 MeshComponent* create_octahedron_mesh(float radius, SDL_GPUDevice* device) {
     const int num_vertices = 6;
-    float vertices[6 * 5] = {0};
+    float vertices[6 * 8] = {0};
     vec3 pos[6] = {
         {0.0f, 1.0f, 0.0f},   // 0: north pole
         {1.0f, 0.0f, 0.0f},   // 1
@@ -22,15 +22,18 @@ MeshComponent* create_octahedron_mesh(float radius, SDL_GPUDevice* device) {
     for (int i = 0; i < 6; i++) {
         pos[i] = vec3_normalize(pos[i]);
         pos[i] = vec3_scale(pos[i], radius);
-        vertices[i * 5 + 0] = pos[i].x;
-        vertices[i * 5 + 1] = pos[i].y;
-        vertices[i * 5 + 2] = pos[i].z;
+        vertices[i * 8 + 0] = pos[i].x;
+        vertices[i * 8 + 1] = pos[i].y;
+        vertices[i * 8 + 2] = pos[i].z;
+        vertices[i * 8 + 3] = 0.0f;  // nx (placeholder)
+        vertices[i * 8 + 4] = 0.0f;  // ny
+        vertices[i * 8 + 5] = 0.0f;  // nz
 
         // Spherical UV mapping
         float u = 0.5f + atan2f(pos[i].z, pos[i].x) / (2.0f * (float)M_PI);
         float v = acosf(pos[i].y) / (float)M_PI;
-        vertices[i * 5 + 3] = u;
-        vertices[i * 5 + 4] = v;
+        vertices[i * 8 + 6] = u;
+        vertices[i * 8 + 7] = v;
     }
 
     uint16_t indices[] = {
@@ -43,6 +46,9 @@ MeshComponent* create_octahedron_mesh(float radius, SDL_GPUDevice* device) {
         5, 3, 4,
         5, 4, 1
     };
+
+    // Compute normals
+    compute_vertex_normals(vertices, num_vertices, indices, sizeof(indices) / sizeof(uint16_t), 8, 0, 3);
 
     SDL_GPUBuffer* vbo = NULL;
     size_t vertices_size = sizeof(vertices);

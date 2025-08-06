@@ -1,5 +1,3 @@
-// src/geometry/dodecahedron.c
-
 #include "geometry/dodecahedron.h"
 
 #include <math.h>
@@ -37,7 +35,7 @@ MeshComponent* create_dodecahedron_mesh(float radius, SDL_GPUDevice* device) {
     };
 
     int num_vertices = 20;
-    float* vertices = (float*)malloc(num_vertices * 5 * sizeof(float));
+    float* vertices = (float*)malloc(num_vertices * 8 * sizeof(float));
     if (!vertices) {
         SDL_Log("Failed to allocate vertices for dodecahedron mesh");
         return NULL;
@@ -52,8 +50,16 @@ MeshComponent* create_dodecahedron_mesh(float radius, SDL_GPUDevice* device) {
         vertices[vertex_idx++] = pos.x;
         vertices[vertex_idx++] = pos.y;
         vertices[vertex_idx++] = pos.z;
-        vertices[vertex_idx++] = 0.5f + atan2f(pos.z, pos.x) / (2.0f * (float)M_PI);
-        vertices[vertex_idx++] = acosf(pos.y) / (float)M_PI;
+        vertices[vertex_idx++] = 0.0f;  // nx (placeholder)
+        vertices[vertex_idx++] = 0.0f;  // ny
+        vertices[vertex_idx++] = 0.0f;  // nz
+
+        // Spherical UV mapping using normalized position
+        vec3 norm_pos = vec3_scale(pos, 1.0f / radius);
+        float u = 0.5f + atan2f(norm_pos.z, norm_pos.x) / (2.0f * (float)M_PI);
+        float v = acosf(norm_pos.y) / (float)M_PI;
+        vertices[vertex_idx++] = u;
+        vertices[vertex_idx++] = v;
     }
 
     int num_indices = 108;
@@ -72,8 +78,11 @@ MeshComponent* create_dodecahedron_mesh(float radius, SDL_GPUDevice* device) {
         7, 19, 3, 3, 10, 11, 11, 7, 3
     };
 
+    // Compute normals
+    compute_vertex_normals(vertices, num_vertices, indices, num_indices, 8, 0, 3);
+
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 5 * sizeof(float);
+    size_t vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     free(vertices);
     if (vbo_failed) return NULL;
