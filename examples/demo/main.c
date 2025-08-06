@@ -144,42 +144,6 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         return SDL_APP_FAILURE;
     }
 
-    // create box entity
-    Entity box = create_entity();
-    // create box mesh
-    MeshComponent box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
-    if (box_mesh.vertex_buffer == NULL)
-        return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
-    add_mesh(box, box_mesh);
-    // create box material
-    MaterialComponent box_material =
-        create_phong_material((vec3){1.0f, 0.0f, 0.0f}, SIDE_FRONT, state);
-    add_material(box, box_material);
-    // box transform
-    add_transform(
-        box, (vec3) {0.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f},
-        (vec3){1.0f, 1.0f, 1.0f}
-    );
-
-    // textured box
-    Entity tbox = create_entity();
-    // texutred box mesh
-    MeshComponent tbox_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
-    if (box_mesh.vertex_buffer == NULL)
-        return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
-    add_mesh(tbox, tbox_mesh);
-    // textured box material
-    MaterialComponent tbox_material =
-        create_phong_material((vec3){1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
-    tbox_material.texture = load_texture(state->device, "assets/test.png");
-    if (tbox_material.texture == NULL) return SDL_APP_FAILURE;
-    add_material(tbox, tbox_material);
-    // textured box transform
-    add_transform(
-        tbox, (vec3) {2.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f},
-        (vec3){1.0f, 1.0f, 1.0f}
-    );
-
     // billboard
     Entity billboard = create_entity();
     add_billboard(billboard);
