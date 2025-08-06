@@ -19,6 +19,12 @@ typedef struct {
     float model[16];
     float view[16];
     float proj[16];
+    // TODO: support more than one light
+    vec3 ambient_color;
+    float ambient_strength;
+    vec3 point_light_pos;
+    vec3 point_light_color;
+    float point_light_intensity;
 } UBOData;
 
 typedef uint32_t Entity;

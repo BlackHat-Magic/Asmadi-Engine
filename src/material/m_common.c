@@ -281,25 +281,38 @@ static int build_pipeline(
         .vertex_shader   = mat->vertex_shader,
         .fragment_shader = mat->fragment_shader,
 
-        .vertex_input_state =
-            {.vertex_buffer_descriptions =
-                 (SDL_GPUVertexBufferDescription[]){
-                     {.slot               = 0,
-                      .pitch              = 5 * sizeof(float),
-                      .input_rate         = SDL_GPU_VERTEXINPUTRATE_VERTEX,
-                      .instance_step_rate = 0}
-                 }, .num_vertex_buffers = 1,
-                          .vertex_attributes =
-                 (SDL_GPUVertexAttribute[]){
-                     {.location    = 0,
-                      .buffer_slot = 0,
-                      .format      = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
-                      .offset      = 0},  // pos
-                     {.location    = 1,
-                      .buffer_slot = 0,
-                      .format      = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
-                      .offset      = 3 * sizeof(float)}  // texcoord
-                 }, .num_vertex_attributes = 2},
+        .vertex_input_state = {
+            .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[]) {
+                     {
+                            .slot = 0,
+                            .pitch = 8 * sizeof(float),
+                            .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+                            .instance_step_rate = 0
+                        }
+                },
+                .num_vertex_buffers = 1,
+                .num_vertex_attributes = 3,
+                .vertex_attributes = (SDL_GPUVertexAttribute[]) {
+                    {  // pos
+                        .location    = 0,
+                        .buffer_slot = 0,
+                        .format      = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                        .offset      = 0
+                    },
+                    { // normals
+                        .location = 1,
+                        .buffer_slot = 0,
+                        .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                        .offset = 3 * sizeof (float)
+                    },
+                    { // texcoord
+                        .location    = 2,
+                        .buffer_slot = 0,
+                        .format      = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+                        .offset      = 6 * sizeof(float)
+                    },
+                 },
+        },
         .rasterizer_state =
             {.fill_mode  = SDL_GPU_FILLMODE_FILL,
                           .cull_mode  = cullmode,

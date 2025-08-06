@@ -284,6 +284,12 @@ SDL_AppResult render_system(AppState* state) {
         ubo.color.x = materials[e].color.y;
         ubo.color.y = materials[e].color.z;
         ubo.color.z = 1.0f; // alpha 1.0
+        // TODO: non-hardcoded lighting
+        ubo.ambient_color = (vec3) {1.0f, 1.0f, 1.0f};
+        ubo.ambient_strength = 0.1f;
+        ubo.point_light_pos = (vec3) {6.0f, 0.0f, -2.0f};
+        ubo.point_light_color = (vec3) {1.0f, 1.0f, 0.8f}; // slightly yellow
+        ubo.point_light_intensity = 1.0f;
 
 
         if (materials[e].pipeline) {

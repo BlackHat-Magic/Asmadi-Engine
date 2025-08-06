@@ -32,6 +32,7 @@
 #include "geometry/tetrahedron.h"
 #include "material/m_common.h"
 #include "material/basic_material.h"
+#include "material/phong_material.h"
 #include "math/matrix.h"
 
 #define STARTING_WIDTH 640
@@ -201,7 +202,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     if (!capsule_mesh) return SDL_APP_FAILURE;
     add_mesh(capsule, capsule_mesh);
     // capsule material
-    MaterialComponent capsule_material = create_basic_material ((vec3) {0.0f, 1.0f, 0.0f}, SIDE_FRONT, state);
+    MaterialComponent capsule_material = create_phong_material ((vec3) {0.0f, 1.0f, 0.0f}, SIDE_FRONT, state);
     add_material (capsule, capsule_material);
     // capsule transform
     add_transform(capsule, (vec3) {6.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});

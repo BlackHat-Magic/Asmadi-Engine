@@ -1,28 +1,35 @@
 #include "geometry/tetrahedron.h"
 
 #include <stdlib.h>
+#include <math.h>
 
 #include "geometry/g_common.h"
 
 MeshComponent* create_tetrahedron_mesh(float radius, SDL_GPUDevice* device) {
-    // 4 vertices (positions + UVs; simple UV projection for demo)
+    // 4 vertices (positions + normals + UVs; simple UV projection for demo)
     const int num_vertices = 4;
-    float vertices[] = {
-        1.0f, 1.0f, 1.0f, 0.5f, 0.5f,    // Vert 0
-        1.0f, -1.0f, -1.0f, 0.5f, 0.0f,  // Vert 1
-        -1.0f, 1.0f, -1.0f, 0.0f, 0.5f,  // Vert 2
-        -1.0f, -1.0f, 1.0f, 1.0f, 0.5f   // Vert 3
+    float vertices[4 * 8] = {
+        1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.5f,    // Vert 0
+        1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f,  // Vert 1
+        -1.0f, 1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f,  // Vert 2
+        -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.5f   // Vert 3
     };
 
-    // Normalize and scale
+    // Normalize and scale positions (normals placeholder)
     for (int i = 0; i < num_vertices; i++) {
-        vec3 pos = {vertices[i*5], vertices[i*5+1], vertices[i*5+2]};
+        vec3 pos = {vertices[i*8], vertices[i*8+1], vertices[i*8+2]};
         pos = vec3_normalize(pos);
         pos = vec3_scale(pos, radius);
-        vertices[i*5] = pos.x;
-        vertices[i*5+1] = pos.y;
-        vertices[i*5+2] = pos.z;
-        // UVs can be improved (e.g., spherical mapping)
+        vertices[i*8] = pos.x;
+        vertices[i*8+1] = pos.y;
+        vertices[i*8+2] = pos.z;
+
+        // Spherical UV mapping (using normalized pos before scaling)
+        vec3 norm_pos = vec3_normalize((vec3){vertices[i*8], vertices[i*8+1], vertices[i*8+2]});
+        float u = 0.5f + atan2f(norm_pos.z, norm_pos.x) / (2.0f * (float)M_PI);
+        float v = acosf(norm_pos.y) / (float)M_PI;
+        vertices[i*8+6] = u;
+        vertices[i*8+7] = v;
     }
 
     // 12 indices (4 triangles, clockwise)
@@ -34,8 +41,11 @@ MeshComponent* create_tetrahedron_mesh(float radius, SDL_GPUDevice* device) {
         1, 3, 2   // Face 3
     };
 
+    // Compute normals
+    compute_vertex_normals(vertices, num_vertices, indices, num_indices, 8, 0, 3);
+
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 5 * sizeof(float);
+    size_t vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     if (vbo_failed) return NULL;
 

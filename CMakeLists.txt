@@ -19,7 +19,12 @@ if(COMPILE_SHADERS)
         set(SHADER_OUTPUT_DIR ${CMAKE_BINARY_DIR}/shaders)
         file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIR})
 
-        set(SHADERS basic_material.vert basic_material.frag)
+        set(SHADERS 
+            basic_material.vert 
+            basic_material.frag
+            phong_material.vert
+            phong_material.frag
+        )
 
         foreach(SHADER ${SHADERS})
             set(INPUT ${SHADER_DIR}/${SHADER})
@@ -58,6 +63,7 @@ add_executable(space-pirates
     src/geometry/torus.c
     src/material/m_common.c
     src/material/basic_material.c
+    src/material/phong_material.c
     src/math/matrix.c
 )
 

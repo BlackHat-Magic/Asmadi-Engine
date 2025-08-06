@@ -46,6 +46,7 @@ MeshComponent* create_capsule_mesh(
         }
     }
 
+    // lathe returns normals
     MeshComponent* mesh = create_lathe_mesh(points, num_points, radial_segments, 0.0f, 2.0f * (float)M_PI, device);
     free(points);
     return mesh;

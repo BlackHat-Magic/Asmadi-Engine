@@ -1,4 +1,4 @@
-#include "plane.h"
+#include "geometry/plane.h"
 
 #include <stdlib.h>
 
@@ -18,7 +18,7 @@ MeshComponent* create_plane_mesh(float width, float height, int width_segments, 
         return NULL;
     }
 
-    float* vertices = (float*)malloc(num_vertices * 5 * sizeof(float));  // pos.x,y,z + uv.u,v
+    float* vertices = (float*)malloc(num_vertices * 8 * sizeof(float));  // pos.x,y,z + normal.x,y,z + uv.u,v
     if (!vertices) {
         SDL_Log("Failed to allocate vertices for plane mesh");
         return NULL;
@@ -45,6 +45,9 @@ MeshComponent* create_plane_mesh(float width, float height, int width_segments, 
             vertices[vertex_idx++] = x_pos;
             vertices[vertex_idx++] = y_pos;
             vertices[vertex_idx++] = 0.0f;
+            vertices[vertex_idx++] = 0.0f;  // nx
+            vertices[vertex_idx++] = 0.0f;  // ny
+            vertices[vertex_idx++] = 1.0f;  // nz
             vertices[vertex_idx++] = u;
             vertices[vertex_idx++] = 1.0f - v;  // Flip V for standard texture coord (0 at bottom)
         }
@@ -72,7 +75,7 @@ MeshComponent* create_plane_mesh(float width, float height, int width_segments, 
     }
 
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 5 * sizeof(float);
+    size_t vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     free(vertices);
     if (vbo_failed) {

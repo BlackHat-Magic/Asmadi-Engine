@@ -12,30 +12,42 @@ MeshComponent* create_box_mesh(
     float hy = h / 2.0f;
     float lz = l / 2.0f;
 
-    float vertices[] = {
+    float vertices[24 * 8] = {
         // front (-z)
-        -wx, -hy, -lz, 0.0f, 1.0f, wx, -hy, -lz, 1.0f, 1.0f, wx, hy, -lz, 1.0f,
-        0.0f, -wx, hy, -lz, 0.0f, 0.0f,
+        -wx, -hy, -lz, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        wx, -hy, -lz, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        wx, hy, -lz, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        -wx, hy, -lz, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 
         // back
-        -wx, -hy, lz, 0.0f, 1.0f, wx, -hy, lz, 1.0f, 1.0f, wx, hy, lz, 1.0f,
-        0.0f, -wx, hy, lz, 0.0f, 0.0f,
+        -wx, -hy, lz, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        wx, -hy, lz, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        wx, hy, lz, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        -wx, hy, lz, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 
         // Left (x = -wx)
-        -wx, hy, -lz, 1.0f, 0.0f, -wx, hy, lz, 1.0f, 1.0f, -wx, -hy, lz, 0.0f,
-        1.0f, -wx, -hy, -lz, 0.0f, 0.0f,
+        -wx, hy, -lz, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        -wx, hy, lz, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        -wx, -hy, lz, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        -wx, -hy, -lz, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 
         // Right (x = wx)
-        wx, hy, -lz, 1.0f, 1.0f, wx, -hy, -lz, 0.0f, 1.0f, wx, -hy, lz, 0.0f,
-        0.0f, wx, hy, lz, 1.0f, 0.0f,
+        wx, hy, -lz, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        wx, -hy, -lz, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        wx, -hy, lz, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        wx, hy, lz, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
 
         // Top (y = hy)
-        -wx, hy, -lz, 0.0f, 0.0f, wx, hy, -lz, 1.0f, 0.0f, wx, hy, lz, 1.0f,
-        1.0f, -wx, hy, lz, 0.0f, 1.0f,
+        -wx, hy, -lz, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        wx, hy, -lz, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        wx, hy, lz, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        -wx, hy, lz, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
 
         // Bottom (y = -hy)
-        -wx, -hy, -lz, 0.0f, 1.0f, -wx, -hy, lz, 0.0f, 0.0f, wx, -hy, lz, 1.0f,
-        0.0f, wx, -hy, -lz, 1.0f, 1.0f
+        -wx, -hy, -lz, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        -wx, -hy, lz, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        wx, -hy, lz, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        wx, -hy, -lz, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f
     };
 
     // 36 indices: 6 per face (2 triangles each), clockwise winding
@@ -54,12 +66,16 @@ MeshComponent* create_box_mesh(
         20, 23, 22, 22, 21, 20
     };
 
+    compute_vertex_normals(vertices, 24, indices, 36, 8, 0, 3);
+
     SDL_GPUBuffer* vbo = NULL;
-    int vbo_failed = upload_vertices(device, vertices, sizeof(vertices), &vbo);
+    size_t vertices_size = sizeof(vertices);
+    int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     if (vbo_failed) return NULL;  // logging handled in upload_vertices()
 
     SDL_GPUBuffer* ibo = NULL;
-    int ibo_failed     = upload_indices(device, indices, sizeof(indices), &ibo);
+    size_t indices_size = sizeof(indices);
+    int ibo_failed     = upload_indices(device, indices, indices_size, &ibo);
     if (ibo_failed) return NULL;  // logging handled in upload_indices()
 
     MeshComponent* out_mesh = (MeshComponent*)malloc(sizeof(MeshComponent));

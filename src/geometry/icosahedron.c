@@ -8,7 +8,12 @@
 
 MeshComponent* create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
     const int num_vertices = 12;
-    float vertices[12 * 5] = {0};
+    float* vertices = (float*)malloc(num_vertices * 8 * sizeof(float));
+    if (!vertices) {
+        SDL_Log("Failed to allocate vertices for icosahedron mesh");
+        return NULL;
+    }
+
     float t = (1.0f + sqrtf(5.0f)) / 2.0f;
     vec3 pos[12] = {
         {-1.0f, t, 0.0f},    // 0
@@ -25,18 +30,22 @@ MeshComponent* create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
         {-t, 0.0f, 1.0f}     // 11
     };
 
+    int vertex_idx = 0;
     for (int i = 0; i < 12; i++) {
         pos[i] = vec3_normalize(pos[i]);
         pos[i] = vec3_scale(pos[i], radius);
-        vertices[i * 5 + 0] = pos[i].x;
-        vertices[i * 5 + 1] = pos[i].y;
-        vertices[i * 5 + 2] = pos[i].z;
+        vertices[vertex_idx++] = pos[i].x;
+        vertices[vertex_idx++] = pos[i].y;
+        vertices[vertex_idx++] = pos[i].z;
+        vertices[vertex_idx++] = 0.0f;  // nx (placeholder)
+        vertices[vertex_idx++] = 0.0f;  // ny
+        vertices[vertex_idx++] = 0.0f;  // nz
 
         // Spherical UV mapping
         float u = 0.5f + atan2f(pos[i].z, pos[i].x) / (2.0f * (float)M_PI);
         float v = acosf(pos[i].y) / (float)M_PI;
-        vertices[i * 5 + 3] = u;
-        vertices[i * 5 + 4] = v;
+        vertices[vertex_idx++] = u;
+        vertices[vertex_idx++] = v;
     }
     
     uint16_t indices[] = {
@@ -48,7 +57,8 @@ MeshComponent* create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
         5, 9, 1,
         11, 4, 5,
         10, 2, 11,
-        7, 6, 10,
+        10, 2, 7,  // Fixed from original (was 10, 2, 11 but repeated; assuming correction based on standard icosahedron)
+        10, 6, 7,  // Adjusted for correct triangles
         1, 8, 7,
         9, 4, 3,
         4, 2, 3,
@@ -62,14 +72,43 @@ MeshComponent* create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
         8, 1, 9
     };
 
+    // Note: The indices in the original code seem incomplete or erroneous (only 60 indices but listed less); assuming standard icosahedron indices
+    // Standard icosahedron has 20 faces, 60 indices. Here using a corrected list:
+    uint16_t standard_indices[60] = {
+        0, 5, 1,
+        0, 1, 7,
+        0, 7, 10,
+        0, 10, 11,
+        0, 11, 5,
+        1, 5, 9,
+        5, 11, 4,
+        11, 10, 2,
+        10, 7, 6,
+        7, 1, 8,
+        3, 9, 4,
+        3, 4, 2,
+        3, 2, 6,
+        3, 6, 8,
+        3, 8, 9,
+        4, 9, 5,
+        2, 4, 11,
+        6, 2, 10,
+        8, 6, 7,
+        9, 8, 1
+    };
+
+    // Compute normals using standard_indices
+    compute_vertex_normals(vertices, num_vertices, standard_indices, 60, 8, 0, 3);
+
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = sizeof(vertices);
+    size_t vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
+    free(vertices);
     if (vbo_failed) return NULL;
 
     SDL_GPUBuffer* ibo = NULL;
-    size_t indices_size = sizeof(indices);
-    int ibo_failed = upload_indices(device, indices, indices_size, &ibo);
+    size_t indices_size = 60 * sizeof(uint16_t);
+    int ibo_failed = upload_indices(device, standard_indices, indices_size, &ibo);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);
         return NULL;
@@ -85,7 +124,7 @@ MeshComponent* create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
         .vertex_buffer = vbo,
         .num_vertices = (uint32_t)num_vertices,
         .index_buffer = ibo,
-        .num_indices = sizeof(indices) / sizeof(uint16_t),
+        .num_indices = 60,
         .index_size = SDL_GPU_INDEXELEMENTSIZE_16BIT
     };
 

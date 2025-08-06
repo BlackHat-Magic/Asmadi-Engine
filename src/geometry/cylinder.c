@@ -6,156 +6,50 @@
 #include "geometry/g_common.h"
 
 MeshComponent* create_cylinder_mesh(
-    float radius_top, float radius_bottom, float height,
-    int radial_segments, int height_segments, bool open_ended,
-    float theta_start, float theta_length, SDL_GPUDevice* device
+    float radius_bottom, float radius_top, float height, int radial_segments,
+    int height_segments, bool open_ended, float theta_start, float theta_length,
+    SDL_GPUDevice* device
 ) {
     if (radial_segments < 3) {
         SDL_Log("Cylinder must have at least 3 radial segments");
         return NULL;
     }
-    if (height_segments < 1) {
-        SDL_Log("Cylinder must have at least 1 height segment");
-        return NULL;
-    }
+    if (height_segments < 1) height_segments = 1;
 
-    bool closed = (fabsf(theta_length - 2.0f * (float)M_PI) < 0.0001f);
+    // Side vertices
+    int num_side_rows = height_segments + 1;
+    int num_side_cols = radial_segments + 1;
+    int num_side_vertices = num_side_rows * num_side_cols;
 
-    int num_radials = radial_segments + 1;
-    int num_side_vertices = num_radials * (height_segments + 1);
+    // Cap vertices (centers + rings, separate for flat normals)
+    int num_cap_vertices = 0;
+    bool add_bottom_cap = !open_ended && (radius_bottom > 0.0f);
+    bool add_top_cap = !open_ended && (radius_top > 0.0f);
+    if (add_bottom_cap) num_cap_vertices += radial_segments + 1;
+    if (add_top_cap) num_cap_vertices += radial_segments + 1;
 
-    int num_bottom_cap_vertices = 0;
-    int num_top_cap_vertices = 0;
-    if (!open_ended) {
-        if (radius_bottom > 0.0f) {
-            num_bottom_cap_vertices = radial_segments + 1;
-        }
-        if (radius_top > 0.0f) {
-            num_top_cap_vertices = radial_segments + 1;
-        }
-    }
-
-    int num_vertices = num_side_vertices + num_bottom_cap_vertices + num_top_cap_vertices;
+    int num_vertices = num_side_vertices + num_cap_vertices;
 
     if (num_vertices > 65535) {
         SDL_Log("Cylinder mesh too large for uint16_t indices");
         return NULL;
     }
 
-    float* vertices = (float*)malloc(num_vertices * 5 * sizeof(float));  // pos.x,y,z + uv.u,v
+    float* vertices = (float*)malloc(num_vertices * 8 * sizeof(float));  // pos.x,y,z + normal.x,y,z + uv.u,v
     if (!vertices) {
         SDL_Log("Failed to allocate vertices for cylinder mesh");
         return NULL;
     }
 
-    // Generate side vertices
-    int vertex_idx = 0;
-    for (int i = 0; i < num_radials; i++) {
-        float u = (float)i / (float)radial_segments;
-        float phi = theta_start + u * theta_length;
+    // Side indices
+    int num_side_indices = height_segments * radial_segments * 6;
 
-        float cos_phi = cosf(phi);
-        float sin_phi = sinf(phi);
+    // Cap indices
+    int num_cap_indices = 0;
+    if (add_bottom_cap) num_cap_indices += radial_segments * 3;
+    if (add_top_cap) num_cap_indices += radial_segments * 3;
 
-        for (int j = 0; j <= height_segments; j++) {
-            float v = (float)j / (float)height_segments;
-            float current_radius = radius_bottom + (radius_top - radius_bottom) * v;
-            float y = -height * 0.5f + height * v;
-
-            float x = current_radius * sin_phi;
-            float z = current_radius * -cos_phi;  // Flipped for clockwise winding consistency
-
-            vertices[vertex_idx++] = x;
-            vertices[vertex_idx++] = y;
-            vertices[vertex_idx++] = z;
-            vertices[vertex_idx++] = u;
-            vertices[vertex_idx++] = 1.0f - v;  // Flip v to match standard (0 at top, 1 at bottom)
-        }
-    }
-
-    // Generate bottom cap vertices if needed
-    int bottom_cap_start = num_side_vertices;
-    if (num_bottom_cap_vertices > 0) {
-        // Rim vertices with polar UVs
-        for (int i = 0; i < radial_segments; i++) {  // < radial_segments (no seam duplicate for cap)
-            float u = (float)i / (float)radial_segments;
-            float phi = theta_start + u * theta_length;
-
-            float sin_phi = sinf(phi);
-            float cos_phi = cosf(phi);
-
-            float x = radius_bottom * sin_phi;
-            float y = -height * 0.5f;
-            float z = radius_bottom * -cos_phi;
-
-            float uv_x = (sin_phi + 1.0f) * 0.5f;
-            float uv_y = (-cos_phi + 1.0f) * 0.5f;
-
-            vertices[vertex_idx++] = x;
-            vertices[vertex_idx++] = y;
-            vertices[vertex_idx++] = z;
-            vertices[vertex_idx++] = uv_x;
-            vertices[vertex_idx++] = uv_y;
-        }
-
-        // Center vertex
-        vertices[vertex_idx++] = 0.0f;
-        vertices[vertex_idx++] = -height * 0.5f;
-        vertices[vertex_idx++] = 0.0f;
-        vertices[vertex_idx++] = 0.5f;
-        vertices[vertex_idx++] = 0.5f;
-    }
-
-    // Generate top cap vertices if needed
-    int top_cap_start = bottom_cap_start + num_bottom_cap_vertices;
-    if (num_top_cap_vertices > 0) {
-        // Rim vertices with polar UVs
-        for (int i = 0; i < radial_segments; i++) {
-            float u = (float)i / (float)radial_segments;
-            float phi = theta_start + u * theta_length;
-
-            float sin_phi = sinf(phi);
-            float cos_phi = cosf(phi);
-
-            float x = radius_top * sin_phi;
-            float y = height * 0.5f;
-            float z = radius_top * -cos_phi;
-
-            float uv_x = (sin_phi + 1.0f) * 0.5f;
-            float uv_y = (-cos_phi + 1.0f) * 0.5f;  // Same as bottom; adjust if texture flipping needed
-
-            vertices[vertex_idx++] = x;
-            vertices[vertex_idx++] = y;
-            vertices[vertex_idx++] = z;
-            vertices[vertex_idx++] = uv_x;
-            vertices[vertex_idx++] = uv_y;
-        }
-
-        // Center vertex
-        vertices[vertex_idx++] = 0.0f;
-        vertices[vertex_idx++] = height * 0.5f;
-        vertices[vertex_idx++] = 0.0f;
-        vertices[vertex_idx++] = 0.5f;
-        vertices[vertex_idx++] = 0.5f;
-    }
-
-    // Indices for sides
-    int num_side_indices = radial_segments * height_segments * 6;
-
-    int num_bottom_cap_indices = 0;
-    int num_top_cap_indices = 0;
-    if (!open_ended) {
-        if (radius_bottom > 0.0f) {
-            num_bottom_cap_indices = (radial_segments - 1) * 3;
-            if (closed) num_bottom_cap_indices += 3;
-        }
-        if (radius_top > 0.0f) {
-            num_top_cap_indices = (radial_segments - 1) * 3;
-            if (closed) num_top_cap_indices += 3;
-        }
-    }
-
-    int num_indices = num_side_indices + num_bottom_cap_indices + num_top_cap_indices;
+    int num_indices = num_side_indices + num_cap_indices;
 
     uint16_t* indices = (uint16_t*)malloc(num_indices * sizeof(uint16_t));
     if (!indices) {
@@ -164,68 +58,135 @@ MeshComponent* create_cylinder_mesh(
         return NULL;
     }
 
-    // Generate side indices (clockwise)
-    int index_idx = 0;
-    int num_points = height_segments + 1;
-    for (int i = 0; i < radial_segments; i++) {
-        for (int j = 0; j < height_segments; j++) {
-            uint16_t a = (uint16_t)(i * num_points + j);
-            uint16_t b = (uint16_t)(i * num_points + (j + 1));
-            uint16_t c = (uint16_t)((i + 1) * num_points + (j + 1));
-            uint16_t d = (uint16_t)((i + 1) * num_points + j);
+    // Generate side vertices
+    int vertex_idx = 0;
+    float half_height = height / 2.0f;
+    for (int iy = 0; iy < num_side_rows; iy++) {
+        float v = (float)iy / (float)height_segments;
+        float current_radius = radius_bottom * (1.0f - v) + radius_top * v;
+        float y_pos = -half_height + height * v;
 
-            // Triangle 1: a b c
+        for (int ix = 0; ix < num_side_cols; ix++) {
+            float u = (float)ix / (float)radial_segments;
+            float theta = theta_start + u * theta_length;
+            float sin_theta = sinf(theta);
+            float cos_theta = cosf(theta);
+
+            vertices[vertex_idx++] = current_radius * sin_theta;
+            vertices[vertex_idx++] = y_pos;
+            vertices[vertex_idx++] = current_radius * cos_theta;
+            vertices[vertex_idx++] = 0.0f;  // nx (placeholder)
+            vertices[vertex_idx++] = 0.0f;  // ny
+            vertices[vertex_idx++] = 0.0f;  // nz
+            vertices[vertex_idx++] = u;
+            vertices[vertex_idx++] = 1.0f - v;
+        }
+    }
+
+    // Generate side indices (unflipped winding to correct outward normals)
+    int index_idx = 0;
+    for (int iy = 0; iy < height_segments; iy++) {
+        for (int ix = 0; ix < radial_segments; ix++) {
+            uint16_t a = (uint16_t)(iy * num_side_cols + ix);
+            uint16_t b = (uint16_t)(iy * num_side_cols + ix + 1);
+            uint16_t c = (uint16_t)((iy + 1) * num_side_cols + ix + 1);
+            uint16_t d = (uint16_t)((iy + 1) * num_side_cols + ix);
+
             indices[index_idx++] = a;
             indices[index_idx++] = b;
             indices[index_idx++] = c;
 
-            // Triangle 2: a c d
             indices[index_idx++] = a;
             indices[index_idx++] = c;
             indices[index_idx++] = d;
         }
     }
 
-    // Generate bottom cap indices if needed
-    if (num_bottom_cap_indices > 0) {
-        uint16_t center = (uint16_t)(bottom_cap_start + radial_segments);
-        // Forward winding for bottom
-        for (int i = 0; i < radial_segments - 1; i++) {
-            indices[index_idx++] = center;
-            indices[index_idx++] = (uint16_t)(bottom_cap_start + i);
-            indices[index_idx++] = (uint16_t)(bottom_cap_start + i + 1);
+    // Bottom cap
+    uint16_t bottom_center_index = 0;
+    if (add_bottom_cap) {
+        bottom_center_index = (uint16_t)(num_side_vertices);  // Current vertex count
+        vertices[vertex_idx++] = 0.0f;
+        vertices[vertex_idx++] = -half_height;
+        vertices[vertex_idx++] = 0.0f;
+        vertices[vertex_idx++] = 0.0f;  // nx
+        vertices[vertex_idx++] = -1.0f; // ny
+        vertices[vertex_idx++] = 0.0f;  // nz
+        vertices[vertex_idx++] = 0.5f;  // u
+        vertices[vertex_idx++] = 0.5f;  // v
+
+        uint16_t bottom_ring_start = bottom_center_index + 1;
+        for (int i = 0; i < radial_segments; i++) {
+            float theta = theta_start + ((float)i / (float)radial_segments) * theta_length;
+            float sin_theta = sinf(theta);
+            float cos_theta = cosf(theta);
+
+            vertices[vertex_idx++] = radius_bottom * sin_theta;
+            vertices[vertex_idx++] = -half_height;
+            vertices[vertex_idx++] = radius_bottom * cos_theta;
+            vertices[vertex_idx++] = 0.0f;  // nx
+            vertices[vertex_idx++] = -1.0f; // ny
+            vertices[vertex_idx++] = 0.0f;  // nz
+            vertices[vertex_idx++] = 0.5f + 0.5f * sin_theta;
+            vertices[vertex_idx++] = 0.5f + 0.5f * cos_theta;
         }
-        if (closed) {
-            indices[index_idx++] = center;
-            indices[index_idx++] = (uint16_t)(bottom_cap_start + radial_segments - 1);
-            indices[index_idx++] = (uint16_t)(bottom_cap_start + 0);
+
+        // Bottom indices (order for normal -y)
+        for (int i = 0; i < radial_segments; i++) {
+            indices[index_idx++] = bottom_center_index;
+            indices[index_idx++] = bottom_ring_start + ((i + 1) % radial_segments);
+            indices[index_idx++] = bottom_ring_start + i;
         }
     }
 
-    // Generate top cap indices if needed
-    if (num_top_cap_indices > 0) {
-        uint16_t center = (uint16_t)(top_cap_start + radial_segments);
-        // Reversed winding for top
-        for (int i = 0; i < radial_segments - 1; i++) {
-            indices[index_idx++] = center;
-            indices[index_idx++] = (uint16_t)(top_cap_start + i + 1);
-            indices[index_idx++] = (uint16_t)(top_cap_start + i);
+    // Top cap
+    uint16_t top_center_index = 0;
+    if (add_top_cap) {
+        top_center_index = (uint16_t)((add_bottom_cap ? num_side_vertices + radial_segments + 1 : num_side_vertices));
+        vertices[vertex_idx++] = 0.0f;
+        vertices[vertex_idx++] = half_height;
+        vertices[vertex_idx++] = 0.0f;
+        vertices[vertex_idx++] = 0.0f;  // nx
+        vertices[vertex_idx++] = 1.0f;  // ny
+        vertices[vertex_idx++] = 0.0f;  // nz
+        vertices[vertex_idx++] = 0.5f;  // u
+        vertices[vertex_idx++] = 0.5f;  // v
+
+        uint16_t top_ring_start = top_center_index + 1;
+        for (int i = 0; i < radial_segments; i++) {
+            float theta = theta_start + ((float)i / (float)radial_segments) * theta_length;
+            float sin_theta = sinf(theta);
+            float cos_theta = cosf(theta);
+
+            vertices[vertex_idx++] = radius_top * sin_theta;
+            vertices[vertex_idx++] = half_height;
+            vertices[vertex_idx++] = radius_top * cos_theta;
+            vertices[vertex_idx++] = 0.0f;  // nx
+            vertices[vertex_idx++] = 1.0f;  // ny
+            vertices[vertex_idx++] = 0.0f;  // nz
+            vertices[vertex_idx++] = 0.5f + 0.5f * sin_theta;
+            vertices[vertex_idx++] = 0.5f + 0.5f * cos_theta;
         }
-        if (closed) {
-            indices[index_idx++] = center;
-            indices[index_idx++] = (uint16_t)(top_cap_start + 0);
-            indices[index_idx++] = (uint16_t)(top_cap_start + radial_segments - 1);
+
+        // Top indices (order for normal +y)
+        for (int i = 0; i < radial_segments; i++) {
+            indices[index_idx++] = top_center_index;
+            indices[index_idx++] = top_ring_start + i;
+            indices[index_idx++] = top_ring_start + ((i + 1) % radial_segments);
         }
     }
+
+    // Compute normals for sides (caps already set manually)
+    compute_vertex_normals(vertices, num_vertices, indices, num_indices, 8, 0, 3);
 
     // Upload to GPU
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 5 * sizeof(float);
+    size_t vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     free(vertices);
     if (vbo_failed) {
         free(indices);
-        return NULL;  // Logging handled in upload_vertices
+        return NULL;
     }
 
     SDL_GPUBuffer* ibo = NULL;
@@ -234,7 +195,7 @@ MeshComponent* create_cylinder_mesh(
     free(indices);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);
-        return NULL;  // Logging handled in upload_indices
+        return NULL;
     }
 
     MeshComponent* out_mesh = (MeshComponent*)malloc(sizeof(MeshComponent));

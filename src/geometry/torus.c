@@ -41,6 +41,7 @@ MeshComponent* create_torus_mesh(
     // Note: This orients the torus with its "hole" along the Y axis (standing up).
     // To lay it flat (hole along Z), add a 90-degree X rotation
     // to the entity transform after creation, e.g., add_transform(e, pos, (vec3){M_PI/2, 0, 0}, scale);
+    // lathe returns normals
     MeshComponent* mesh = create_lathe_mesh(
         points, num_points, tubular_segments, 0.0f, arc, device
     );
