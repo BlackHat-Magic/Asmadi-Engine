@@ -50,3 +50,5 @@ oh wow this is getting complicated fast
 - [ ] Controllers
 - [ ] Physics
 - [ ] UV Mapping for Mesh Primitives
+- [ ] Fix Shading on unculled back faces
+- [ ] Sphere butt
