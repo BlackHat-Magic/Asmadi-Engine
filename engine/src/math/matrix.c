@@ -1,5 +1,7 @@
 #include "math/matrix.h"
 
+#include <time.h>
+#include <stdlib.h>
 #include <math.h>
 
 // VEC2
@@ -245,4 +247,50 @@ void mat4_look_at(mat4 m, vec3 eye, vec3 center, vec3 up) {
     m[MAT4_IDX(0, 3)] = -vec3_dot(s, eye);
     m[MAT4_IDX(1, 3)] = -vec3_dot(u, eye);
     m[MAT4_IDX(2, 3)] = vec3_dot(f, eye);
+}
+
+void random_seed(unsigned int seed) {
+    srand(seed);
+}
+
+float random_float(void) {
+    return (float)rand() / (float)RAND_MAX;
+}
+
+float random_float_range(float min, float max) {
+    return min + random_float() * (max - min);
+}
+
+int random_int(int min, int max) {
+    if (min > max) {
+        int temp = min;
+        min = max;
+        max = temp;
+    }
+    return min + rand() / (RAND_MAX / (max - min + 1) + 1);
+}
+
+bool random_bool(void) {
+    return random_float() < 0.5f;
+}
+
+vec2 random_vec2(void) {
+    return (vec2){random_float(), random_float()};
+}
+
+vec3 random_vec3(void) {
+    return (vec3){random_float(), random_float(), random_float()};
+}
+
+vec3 random_in_unit_sphere(void) {
+    vec3 p;
+    do {
+        p = vec3_scale(random_vec3(), 2.0f);
+        p = vec3_sub(p, (vec3){1.0f, 1.0f, 1.0f});  // Map to [-1,1)^3
+    } while (vec3_dot(p, p) >= 1.0f);  // Rejection sampling until inside sphere
+    return p;
+}
+
+vec3 random_unit_vector(void) {
+    return vec3_normalize(random_in_unit_sphere());
 }

@@ -56,3 +56,14 @@ void mat4_scale(mat4 m, vec3 v);
 void mat4_multiply(mat4 out, mat4 a, mat4 b);
 void mat4_perspective(mat4 m, float fov_rad, float aspect, float near, float far);
 void mat4_look_at(mat4 m, vec3 eye, vec3 center, vec3 up);
+
+// TODO: move these to a separate file
+void random_seed(unsigned int seed);
+float random_float(void);  // Returns [0, 1)
+float random_float_range(float min, float max);  // Returns [min, max)
+int random_int(int min, int max);  // Returns [min, max] inclusive
+bool random_bool(void);  // Returns true/false with 50% probability
+vec2 random_vec2(void);  // Each component [0, 1)
+vec3 random_vec3(void);  // Each component [0, 1)
+vec3 random_in_unit_sphere(void);  // Random point inside unit sphere (useful for sampling)
+vec3 random_unit_vector(void);  // Random normalized direction (on unit sphere surface)
