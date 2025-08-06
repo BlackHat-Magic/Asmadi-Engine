@@ -1,171 +1,204 @@
 #include "geometry/g_common.h"
 
-#include <stdint.h>
 #include <stdlib.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_gpu.h>
 
-#include "math/matrix.h"
+#include <math/matrix.h>
+
+// Returns 0 on success, 1 on failure
+int upload_vertices(
+    SDL_GPUDevice* device, const void* vertices, size_t vertices_size,
+    SDL_GPUBuffer** vbo_out
+) {
+    SDL_GPUBufferCreateInfo vbo_info = {
+        .size  = (Uint32)vertices_size,
+        .usage = SDL_GPU_BUFFERUSAGE_VERTEX
+    };
+    SDL_GPUBuffer* vbo = SDL_CreateGPUBuffer(device, &vbo_info);
+    if (!vbo) {
+        SDL_Log("Failed to create vertex buffer: %s", SDL_GetError());
+        return 1;
+    }
+
+    SDL_GPUTransferBufferCreateInfo trans_info = {
+        .size  = (Uint32)vertices_size,
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+    };
+    SDL_GPUTransferBuffer* trans_buf =
+        SDL_CreateGPUTransferBuffer(device, &trans_info);
+    if (!trans_buf) {
+        SDL_Log("Failed to create transfer buffer: %s", SDL_GetError());
+        SDL_ReleaseGPUBuffer(device, vbo);
+        return 1;
+    }
+
+    void* data = SDL_MapGPUTransferBuffer(device, trans_buf, false);
+    if (!data) {
+        SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
+        SDL_ReleaseGPUTransferBuffer(device, trans_buf);
+        SDL_ReleaseGPUBuffer(device, vbo);
+        return 1;
+    }
+    memcpy(data, vertices, vertices_size);
+    SDL_UnmapGPUTransferBuffer(device, trans_buf);
+
+    SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(device);
+    if (!cmd) {
+        SDL_Log("Failed to acquire command buffer: %s", SDL_GetError());
+        SDL_ReleaseGPUTransferBuffer(device, trans_buf);
+        SDL_ReleaseGPUBuffer(device, vbo);
+        return 1;
+    }
+
+    SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(cmd);
+    if (!copy_pass) {
+        SDL_Log("Failed to begin copy pass: %s", SDL_GetError());
+        SDL_SubmitGPUCommandBuffer(cmd);
+        SDL_ReleaseGPUTransferBuffer(device, trans_buf);
+        SDL_ReleaseGPUBuffer(device, vbo);
+        return 1;
+    }
+
+    SDL_GPUTransferBufferLocation src_loc = {
+        .transfer_buffer = trans_buf,
+        .offset          = 0
+    };
+    SDL_GPUBufferRegion dst_reg = {
+        .buffer = vbo,
+        .offset = 0,
+        .size   = (Uint32)vertices_size
+    };
+    SDL_UploadToGPUBuffer(copy_pass, &src_loc, &dst_reg, false);
+    SDL_EndGPUCopyPass(copy_pass);
+    SDL_SubmitGPUCommandBuffer(cmd);
+
+    SDL_ReleaseGPUTransferBuffer(device, trans_buf);
+    *vbo_out = vbo;
+    return 0;
+}
+
+// Returns 0 on success, 1 on failure
+int upload_indices(
+    SDL_GPUDevice* device, const void* indices, size_t indices_size,
+    SDL_GPUBuffer** ibo_out
+) {
+    SDL_GPUBufferCreateInfo ibo_info = {
+        .size  = (Uint32)indices_size,
+        .usage = SDL_GPU_BUFFERUSAGE_INDEX
+    };
+    SDL_GPUBuffer* ibo = SDL_CreateGPUBuffer(device, &ibo_info);
+    if (!ibo) {
+        SDL_Log("Failed to create index buffer: %s", SDL_GetError());
+        return 1;
+    }
+
+    SDL_GPUTransferBufferCreateInfo trans_info = {
+        .size  = (Uint32)indices_size,
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+    };
+    SDL_GPUTransferBuffer* trans_buf =
+        SDL_CreateGPUTransferBuffer(device, &trans_info);
+    if (!trans_buf) {
+        SDL_Log("Failed to create transfer buffer: %s", SDL_GetError());
+        SDL_ReleaseGPUBuffer(device, ibo);
+        return 1;
+    }
+
+    void* data = SDL_MapGPUTransferBuffer(device, trans_buf, false);
+    if (!data) {
+        SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
+        SDL_ReleaseGPUTransferBuffer(device, trans_buf);
+        SDL_ReleaseGPUBuffer(device, ibo);
+        return 1;
+    }
+    memcpy(data, indices, indices_size);
+    SDL_UnmapGPUTransferBuffer(device, trans_buf);
+
+    SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(device);
+    if (!cmd) {
+        SDL_Log("Failed to acquire command buffer: %s", SDL_GetError());
+        SDL_ReleaseGPUTransferBuffer(device, trans_buf);
+        SDL_ReleaseGPUBuffer(device, ibo);
+        return 1;
+    }
+
+    SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(cmd);
+    if (!copy_pass) {
+        SDL_Log("Failed to begin copy pass: %s", SDL_GetError());
+        SDL_SubmitGPUCommandBuffer(cmd);
+        SDL_ReleaseGPUTransferBuffer(device, trans_buf);
+        SDL_ReleaseGPUBuffer(device, ibo);
+        return 1;
+    }
+
+    SDL_GPUTransferBufferLocation src_loc = {
+        .transfer_buffer = trans_buf,
+        .offset          = 0
+    };
+    SDL_GPUBufferRegion dst_reg = {
+        .buffer = ibo,
+        .offset = 0,
+        .size   = (Uint32)indices_size
+    };
+    SDL_UploadToGPUBuffer(copy_pass, &src_loc, &dst_reg, false);
+    SDL_EndGPUCopyPass(copy_pass);
+    SDL_SubmitGPUCommandBuffer(cmd);
+
+    SDL_ReleaseGPUTransferBuffer(device, trans_buf);
+    *ibo_out = ibo;
+    return 0;
+}
 
 void compute_vertex_normals(
-    float* vertices, uint32_t num_vertices,
-    uint16_t* indices, uint32_t num_indices,
-    uint32_t stride, uint32_t pos_offset, uint32_t normal_offset
+    float* vertices, int num_vertices, const uint16_t* indices,
+    int num_indices, int stride, int pos_offset, int norm_offset
 ) {
-    vec3* accumulators = (vec3*)calloc(num_vertices, sizeof(vec3));
-    if (!accumulators) {
-        SDL_Log("Failed to allocate normal accumulators");
+    // Accumulate normals per vertex
+    vec3* accum_norms = (vec3*)calloc(num_vertices, sizeof(vec3));
+    if (!accum_norms) {
+        SDL_Log("Failed to allocate accum_norms for normals computation");
         return;
     }
 
-    for (uint32_t i = 0; i < num_indices; i += 3) {
-        uint16_t i0 = indices[i];
-        uint16_t i1 = indices[i + 1];
-        uint16_t i2 = indices[i + 2];
+    for (int i = 0; i < num_indices; i += 3) {
+        int ia = indices[i];
+        int ib = indices[i + 1];
+        int ic = indices[i + 2];
 
-        // Extract positions
-        float* p0_ptr = vertices + i0 * stride + pos_offset;
-        float* p1_ptr = vertices + i1 * stride + pos_offset;
-        float* p2_ptr = vertices + i2 * stride + pos_offset;
+        vec3 a = {
+            vertices[ia * stride + pos_offset],
+            vertices[ia * stride + pos_offset + 1],
+            vertices[ia * stride + pos_offset + 2]
+        };
+        vec3 b = {
+            vertices[ib * stride + pos_offset],
+            vertices[ib * stride + pos_offset + 1],
+            vertices[ib * stride + pos_offset + 2]
+        };
+        vec3 c = {
+            vertices[ic * stride + pos_offset],
+            vertices[ic * stride + pos_offset + 1],
+            vertices[ic * stride + pos_offset + 2]
+        };
 
-        vec3 p0 = {p0_ptr[0], p0_ptr[1], p0_ptr[2]};
-        vec3 p1 = {p1_ptr[0], p1_ptr[1], p1_ptr[2]};
-        vec3 p2 = {p2_ptr[0], p2_ptr[1], p2_ptr[2]};
+        vec3 ab = vec3_sub(b, a);
+        vec3 ac = vec3_sub(c, a);
+        vec3 face_norm = vec3_normalize(vec3_cross(ab, ac));
 
-        vec3 e1 = vec3_sub(p1, p0);
-        vec3 e2 = vec3_sub(p2, p0);
-
-        vec3 face_normal = vec3_cross(e1, e2);  // Un-normalized for area weighting
-
-        // Accumulate
-        accumulators[i0] = vec3_add(accumulators[i0], face_normal);
-        accumulators[i1] = vec3_add(accumulators[i1], face_normal);
-        accumulators[i2] = vec3_add(accumulators[i2], face_normal);
+        accum_norms[ia] = vec3_add(accum_norms[ia], face_norm);
+        accum_norms[ib] = vec3_add(accum_norms[ib], face_norm);
+        accum_norms[ic] = vec3_add(accum_norms[ic], face_norm);
     }
 
-    // Normalize and set into vertices
-    for (uint32_t v = 0; v < num_vertices; v++) {
-        vec3 n = vec3_normalize(accumulators[v]);
-        if (n.x == 0.0f && n.y == 0.0f && n.z == 0.0f) {  // Zero vector case
-            n = (vec3){0.0f, 0.0f, 1.0f};  // Default normal
-        }
-
-        float* normal_ptr = vertices + v * stride + normal_offset;
-        normal_ptr[0] = n.x;
-        normal_ptr[1] = n.y;
-        normal_ptr[2] = n.z;
+    // Normalize and assign
+    for (int i = 0; i < num_vertices; i++) {
+        vec3 norm = vec3_normalize(accum_norms[i]);
+        vertices[i * stride + norm_offset] = norm.x;
+        vertices[i * stride + norm_offset + 1] = norm.y;
+        vertices[i * stride + norm_offset + 2] = norm.z;
     }
 
-    free(accumulators);
-}
-
-// return 0 on success 1 on failure
-int upload_indices(
-    SDL_GPUDevice* device, void* indices, size_t size,
-    SDL_GPUBuffer** out_buffer
-) {
-    SDL_GPUBufferCreateInfo ibo_info = {
-        .usage = SDL_GPU_BUFFERUSAGE_INDEX, .size = size
-    };
-    *out_buffer = SDL_CreateGPUBuffer(device, &ibo_info);
-    if (out_buffer == NULL) {
-        SDL_Log("Failed to create index buffer object: %s", SDL_GetError());
-        return 1;
-    }
-
-    SDL_GPUTransferBufferCreateInfo transfer_info = {
-        .size = size, .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
-    };
-    SDL_GPUTransferBuffer* transfer =
-        SDL_CreateGPUTransferBuffer(device, &transfer_info);
-    if (transfer == NULL) {
-        SDL_Log("Failed to create transfer buffer: %s", SDL_GetError());
-        return 1;
-    }
-    void* data = SDL_MapGPUTransferBuffer(device, transfer, false);
-    if (data == NULL) {
-        SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
-        return 1;
-    }
-    SDL_memcpy(data, indices, size);
-    SDL_UnmapGPUTransferBuffer(device, transfer);
-
-    SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(device);
-    if (cmd == NULL) {
-        SDL_Log("Failed to acquire GPU command buffer: %s", SDL_GetError());
-        return 1;
-    }
-    SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(cmd);
-    if (copy == NULL) {
-        SDL_Log("Failed to begin GPU copy pass: %s", SDL_GetError());
-        return 1;
-    }
-    SDL_GPUTransferBufferLocation src = {
-        .transfer_buffer = transfer, .offset = 0
-    };
-    SDL_GPUBufferRegion dst = {
-        .buffer = *out_buffer, .offset = 0, .size = size
-    };
-    SDL_UploadToGPUBuffer(copy, &src, &dst, false);
-    SDL_EndGPUCopyPass(copy);
-    SDL_SubmitGPUCommandBuffer(cmd);
-    SDL_ReleaseGPUTransferBuffer(device, transfer);
-
-    return 0;
-}
-
-// return 0 on success 1 on failure
-int upload_vertices(
-    SDL_GPUDevice* device, float* vertices, size_t size,
-    SDL_GPUBuffer** out_buffer
-) {
-    SDL_GPUBufferCreateInfo vbo_info = {
-        .usage = SDL_GPU_BUFFERUSAGE_VERTEX, .size = size
-    };
-    *out_buffer = SDL_CreateGPUBuffer(device, &vbo_info);
-    if (out_buffer == NULL) {
-        SDL_Log("Failed to create vertex buffer object: %s", SDL_GetError());
-        return 1;
-    }
-
-    SDL_GPUTransferBufferCreateInfo transfer_info = {
-        .size = size, .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
-    };
-    SDL_GPUTransferBuffer* transfer =
-        SDL_CreateGPUTransferBuffer(device, &transfer_info);
-    if (transfer == NULL) {
-        SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
-        return 1;
-    }
-    void* data = SDL_MapGPUTransferBuffer(device, transfer, false);
-    if (data == NULL) {
-        SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
-        return 1;
-    }
-    memcpy(data, vertices, size);
-    SDL_UnmapGPUTransferBuffer(device, transfer);
-
-    SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(device);
-    if (cmd == NULL) {
-        SDL_Log("Failed to acquire GPU command buffer: %s", SDL_GetError());
-        return 1;
-    }
-    SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(cmd);
-    if (copy == NULL) {
-        SDL_Log("Failed to begin GPU copy pass: %s", SDL_GetError());
-        return 1;
-    }
-    SDL_GPUTransferBufferLocation src = {
-        .transfer_buffer = transfer, .offset = 0
-    };
-    SDL_GPUBufferRegion dst = {
-        .buffer = *out_buffer, .offset = 0, .size = size
-    };
-    SDL_UploadToGPUBuffer(copy, &src, &dst, false);
-    SDL_EndGPUCopyPass(copy);
-    SDL_SubmitGPUCommandBuffer(cmd);
-    SDL_ReleaseGPUTransferBuffer(device, transfer);
-
-    return 0;
+    free(accum_norms);
 }

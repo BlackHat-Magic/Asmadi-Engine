@@ -5,9 +5,11 @@
 #include "ecs/ecs.h"
 #include "geometry/g_common.h"
 
-MeshComponent* create_box_mesh(
+MeshComponent create_box_mesh(
     float l, float w, float h, SDL_GPUDevice* device
 ) {
+    MeshComponent out_mesh = {0};
+
     float wx = w / 2.0f;
     float hy = h / 2.0f;
     float lz = l / 2.0f;
@@ -71,19 +73,21 @@ MeshComponent* create_box_mesh(
     SDL_GPUBuffer* vbo = NULL;
     size_t vertices_size = sizeof(vertices);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
-    if (vbo_failed) return NULL;  // logging handled in upload_vertices()
+    if (vbo_failed) return (MeshComponent){0};  // logging handled in upload_vertices()
 
     SDL_GPUBuffer* ibo = NULL;
     size_t indices_size = sizeof(indices);
     int ibo_failed     = upload_indices(device, indices, indices_size, &ibo);
-    if (ibo_failed) return NULL;  // logging handled in upload_indices()
+    if (ibo_failed) {
+        SDL_ReleaseGPUBuffer(device, vbo);
+        return (MeshComponent){0};  // logging handled in upload_indices()
+    }
 
-    MeshComponent* out_mesh = (MeshComponent*)malloc(sizeof(MeshComponent));
-    *out_mesh               = (MeshComponent){.vertex_buffer = vbo,
-                                              .num_vertices  = 24,
-                                              .index_buffer  = ibo,
-                                              .num_indices   = 36,
-                                              .index_size = SDL_GPU_INDEXELEMENTSIZE_16BIT};
+    out_mesh.vertex_buffer = vbo;
+    out_mesh.num_vertices  = 24;
+    out_mesh.index_buffer  = ibo;
+    out_mesh.num_indices   = 36;
+    out_mesh.index_size = SDL_GPU_INDEXELEMENTSIZE_16BIT;
 
     return out_mesh;
 }

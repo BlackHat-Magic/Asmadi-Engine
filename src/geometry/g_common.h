@@ -1,13 +1,20 @@
-#include <stdint.h>
+#pragma once
 
 #include <SDL3/SDL_gpu.h>
 
-void compute_vertex_normals(
-    float* vertices, uint32_t num_vertices,
-    uint16_t* indices, uint32_t num_indices,
-    uint32_t stride, uint32_t pos_offset, uint32_t normal_offset
+// Returns 0 on success, 1 on failure
+int upload_vertices(
+    SDL_GPUDevice* device, const void* vertices, size_t vertices_size,
+    SDL_GPUBuffer** vbo_out
 );
 
-int upload_indices(SDL_GPUDevice* device, void* indices, size_t size, SDL_GPUBuffer** out_buffer);
+// Returns 0 on success, 1 on failure
+int upload_indices(
+    SDL_GPUDevice* device, const void* indices, size_t indices_size,
+    SDL_GPUBuffer** ibo_out
+);
 
-int upload_vertices(SDL_GPUDevice* device, float* vertices, size_t size, SDL_GPUBuffer** out_buffer);
+void compute_vertex_normals(
+    float* vertices, int num_vertices, const uint16_t* indices,
+    int num_indices, int stride, int pos_offset, int norm_offset
+);

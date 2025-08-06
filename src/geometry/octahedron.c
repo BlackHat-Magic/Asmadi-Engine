@@ -7,7 +7,8 @@
 #include "ecs/ecs.h"
 #include "geometry/g_common.h"
 
-MeshComponent* create_octahedron_mesh(float radius, SDL_GPUDevice* device) {
+MeshComponent create_octahedron_mesh(float radius, SDL_GPUDevice* device) {
+    MeshComponent null_mesh = (MeshComponent) {0};
     const int num_vertices = 6;
     float vertices[6 * 8] = {0};
     vec3 pos[6] = {
@@ -53,23 +54,17 @@ MeshComponent* create_octahedron_mesh(float radius, SDL_GPUDevice* device) {
     SDL_GPUBuffer* vbo = NULL;
     size_t vertices_size = sizeof(vertices);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
-    if (vbo_failed) return NULL;
+    if (vbo_failed) return null_mesh;
 
     SDL_GPUBuffer* ibo = NULL;
     size_t indices_size = sizeof(indices);
     int ibo_failed = upload_indices(device, indices, indices_size, &ibo);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);
-        return NULL;
+        return null_mesh;
     }
 
-    MeshComponent* out_mesh = (MeshComponent*)malloc(sizeof(MeshComponent));
-    if (!out_mesh) {
-        SDL_ReleaseGPUBuffer(device, vbo);
-        SDL_ReleaseGPUBuffer(device, ibo);
-        return NULL;
-    }
-    *out_mesh = (MeshComponent){
+    MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
         .num_vertices = (uint32_t)num_vertices,
         .index_buffer = ibo,

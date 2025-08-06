@@ -5,21 +5,22 @@
 
 #include "geometry/g_common.h"
 
-MeshComponent* create_ring_mesh(
+MeshComponent create_ring_mesh(
     float inner_radius, float outer_radius, int theta_segments, int phi_segments,
     float theta_start, float theta_length, SDL_GPUDevice* device
 ) {
+    MeshComponent null_mesh = (MeshComponent) {0};
     if (theta_segments < 3) {
         SDL_Log("Ring must have at least 3 theta segments");
-        return NULL;
+        return null_mesh;
     }
     if (phi_segments < 1) {
         SDL_Log("Ring must have at least 1 phi segment");
-        return NULL;
+        return null_mesh;
     }
     if (inner_radius >= outer_radius) {
         SDL_Log("Inner radius must be less than outer radius");
-        return NULL;
+        return null_mesh;
     }
 
     int num_theta = theta_segments + 1;
@@ -28,13 +29,13 @@ MeshComponent* create_ring_mesh(
 
     if (num_vertices > 65535) {
         SDL_Log("Ring mesh too large for uint16_t indices");
-        return NULL;
+        return null_mesh;
     }
 
     float* vertices = (float*)malloc(num_vertices * 8 * sizeof(float));  // pos.x,y,z + uv.u,v
     if (!vertices) {
         SDL_Log("Failed to allocate vertices for ring mesh");
-        return NULL;
+        return null_mesh;
     }
 
     int vertex_idx = 0;
@@ -71,7 +72,7 @@ MeshComponent* create_ring_mesh(
     if (!indices) {
         SDL_Log("Failed to allocate indices for ring mesh");
         free(vertices);
-        return NULL;
+        return null_mesh;
     }
 
     int index_idx = 0;
@@ -100,7 +101,7 @@ MeshComponent* create_ring_mesh(
     free(vertices);
     if (vbo_failed) {
         free(indices);
-        return NULL;  // Logging handled in upload_vertices
+        return null_mesh;  // Logging handled in upload_vertices
     }
 
     SDL_GPUBuffer* ibo = NULL;
@@ -109,17 +110,10 @@ MeshComponent* create_ring_mesh(
     free(indices);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);
-        return NULL;  // Logging handled in upload_indices
+        return null_mesh;  // Logging handled in upload_indices
     }
 
-    MeshComponent* out_mesh = (MeshComponent*)malloc(sizeof(MeshComponent));
-    if (!out_mesh) {
-        SDL_Log("Failed to allocate MeshComponent for ring");
-        SDL_ReleaseGPUBuffer(device, vbo);
-        SDL_ReleaseGPUBuffer(device, ibo);
-        return NULL;
-    }
-    *out_mesh = (MeshComponent){
+    MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
         .num_vertices = (uint32_t)num_vertices,
         .index_buffer = ibo,

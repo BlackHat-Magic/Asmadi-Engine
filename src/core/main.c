@@ -45,8 +45,8 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
     AppState* state = (AppState*)appstate;
 
     Entity cam = state->camera_entity;
-    if (cam == (Entity)-1 || !entity_active[cam]) return SDL_APP_CONTINUE;
-    TransformComponent* cam_trans = &transforms[cam];
+    if (cam == (Entity)-1 || !has_transform(cam)) return SDL_APP_CONTINUE;
+    TransformComponent* cam_trans = get_transform(cam);
 
     switch (event->type) {
         case SDL_EVENT_QUIT:
@@ -148,8 +148,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // create box entity
     Entity box = create_entity();
     // create box mesh
-    MeshComponent* box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
-    if (box_mesh == NULL)
+    MeshComponent box_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
+    if (box_mesh.vertex_buffer == NULL)
         return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
     add_mesh(box, box_mesh);
     // create box material
@@ -165,8 +165,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // textured box
     Entity tbox = create_entity();
     // texutred box mesh
-    MeshComponent* tbox_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
-    if (box_mesh == NULL)
+    MeshComponent tbox_mesh = create_box_mesh(1.0f, 1.0f, 1.0f, state->device);
+    if (box_mesh.vertex_buffer == NULL)
         return SDL_APP_FAILURE;  // logging handled inside create_box_mesh()
     add_mesh(tbox, tbox_mesh);
     // textured box material
@@ -185,8 +185,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     Entity billboard = create_entity();
     add_billboard(billboard);
     // billboard mesh
-    MeshComponent* billboard_mesh = create_plane_mesh(1.0f, 1.0f, 1, 1, state->device);
-    if (billboard_mesh == NULL) return SDL_APP_FAILURE; // logging handled inside function
+    MeshComponent billboard_mesh = create_plane_mesh(1.0f, 1.0f, 1, 1, state->device);
+    if (billboard_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE; // logging handled inside function
     add_mesh(billboard, billboard_mesh);
     // billboard material
     MaterialComponent billboard_material = create_phong_material ((vec3) {1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
@@ -198,8 +198,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
     // capsule
     Entity capsule = create_entity();
-    MeshComponent* capsule_mesh = create_capsule_mesh (0.5f, 1.0f, 8, 16, state->device);
-    if (!capsule_mesh) return SDL_APP_FAILURE;
+    MeshComponent capsule_mesh = create_capsule_mesh (0.5f, 1.0f, 8, 16, state->device);
+    if (capsule_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE;
     add_mesh(capsule, capsule_mesh);
     // capsule material
     MaterialComponent capsule_material = create_phong_material ((vec3) {0.0f, 1.0f, 0.0f}, SIDE_FRONT, state);
@@ -209,7 +209,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
     // circle
     Entity circle = create_entity();
-    MeshComponent* circle_mesh = create_circle_mesh (0.5f, 16, state->device);
+    MeshComponent circle_mesh = create_circle_mesh (0.5f, 16, state->device);
     add_mesh(circle, circle_mesh);
     // circle material
     MaterialComponent circle_material = create_phong_material ((vec3) {1.0f, 1.0f, 0.0f}, SIDE_DOUBLE, state);
@@ -220,7 +220,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // cone
     Entity cone = create_entity();
     // cone mesh
-    MeshComponent* cone_mesh = create_cone_mesh (0.5f, 1.0f, 16, 1, false, 0.0f, (float)M_PI * 2.0f, state->device);
+    MeshComponent cone_mesh = create_cone_mesh (0.5f, 1.0f, 16, 1, false, 0.0f, (float)M_PI * 2.0f, state->device);
     add_mesh(cone, cone_mesh);
     // cone material
     MaterialComponent cone_material = create_phong_material ((vec3) {0.0f, 0.0f, 1.0f}, SIDE_FRONT, state);
@@ -231,7 +231,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // cylinder
     Entity cylinder = create_entity();
     // cylinder mesh
-    MeshComponent* cylinder_mesh = create_cylinder_mesh(0.5f, 0.5f, 1.0f, 16, 1, false, 0.0f, (float)M_PI * 2.0f, state->device);
+    MeshComponent cylinder_mesh = create_cylinder_mesh(0.5f, 0.5f, 1.0f, 16, 1, false, 0.0f, (float)M_PI * 2.0f, state->device);
     add_mesh(cylinder, cylinder_mesh);
     // cylinder material
     MaterialComponent cylinder_material = create_phong_material((vec3) {1.0f, 0.0f, 1.0f}, SIDE_FRONT, state);
@@ -242,8 +242,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // ring
     Entity ring = create_entity();
     // mesh
-    MeshComponent* ring_mesh = create_ring_mesh(0.25f, 0.5f, 32, 1, 0.0f, (float)M_PI * 2.0f, state->device);
-    if (ring_mesh == NULL) return SDL_APP_FAILURE;
+    MeshComponent ring_mesh = create_ring_mesh(0.25f, 0.5f, 32, 1, 0.0f, (float)M_PI * 2.0f, state->device);
+    if (ring_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE;
     add_mesh(ring, ring_mesh);
     // material
     MaterialComponent ring_material = create_phong_material((vec3){0.0f, 1.0f, 1.0f}, SIDE_DOUBLE, state);
@@ -254,8 +254,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // sphere
     Entity sphere = create_entity();
     // mesh
-    MeshComponent* sphere_mesh = create_sphere_mesh(0.5f, 32, 16, 0.0f, (float)M_PI * 2.0f, 0.0f, (float)M_PI, state->device);
-    if (sphere_mesh == NULL) return SDL_APP_FAILURE;
+    MeshComponent sphere_mesh = create_sphere_mesh(0.5f, 32, 16, 0.0f, (float)M_PI * 2.0f, 0.0f, (float)M_PI, state->device);
+    if (sphere_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE;
     add_mesh(sphere, sphere_mesh);
     // material
     MaterialComponent sphere_material = create_phong_material((vec3){1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
@@ -266,8 +266,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // torus
     Entity torus = create_entity();
     // mesh
-    MeshComponent* torus_mesh = create_torus_mesh(0.5f, 0.2f, 16, 32, (float)M_PI * 2.0f, state->device);
-    if (torus_mesh == NULL) return SDL_APP_FAILURE;
+    MeshComponent torus_mesh = create_torus_mesh(0.5f, 0.2f, 16, 32, (float)M_PI * 2.0f, state->device);
+    if (torus_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE;
     add_mesh(torus, torus_mesh);
     // material
     MaterialComponent torus_material = create_phong_material((vec3){0.5f, 0.0f, 0.0f}, SIDE_FRONT, state);
@@ -278,8 +278,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // tetrahedron
     Entity tetrahedron = create_entity();
     // mesh
-    MeshComponent* tetrahedron_mesh = create_tetrahedron_mesh(0.5f, state->device);
-    if (tetrahedron_mesh == NULL) return SDL_APP_FAILURE;
+    MeshComponent tetrahedron_mesh = create_tetrahedron_mesh(0.5f, state->device);
+    if (tetrahedron_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE;
     add_mesh(tetrahedron, tetrahedron_mesh);
     // material
     MaterialComponent tetrahedron_material = create_phong_material((vec3){0.0f, 0.5f, 0.0f}, SIDE_FRONT, state);
@@ -290,8 +290,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // octahedron
     Entity octahedron = create_entity();
     // mesh
-    MeshComponent* octahedron_mesh = create_octahedron_mesh(0.5f, state->device);
-    if (octahedron_mesh == NULL) return SDL_APP_FAILURE;
+    MeshComponent octahedron_mesh = create_octahedron_mesh(0.5f, state->device);
+    if (octahedron_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE;
     add_mesh (octahedron, octahedron_mesh);
     // material
     MaterialComponent octahedron_material = create_phong_material ((vec3){0.5f, 0.5f, 0.0f}, SIDE_FRONT, state);
@@ -302,8 +302,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // dodecahedron
     Entity dodecahedron = create_entity();
     // mesh
-    MeshComponent* dodecahedron_mesh = create_dodecahedron_mesh(0.5f, state->device);
-    if (dodecahedron_mesh == NULL) return SDL_APP_FAILURE;
+    MeshComponent dodecahedron_mesh = create_dodecahedron_mesh(0.5f, state->device);
+    if (dodecahedron_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE;
     add_mesh (dodecahedron, dodecahedron_mesh);
     // material
     MaterialComponent dodecahedron_material = create_phong_material ((vec3){0.0f, 0.0f, 0.5f}, SIDE_FRONT, state);
@@ -314,8 +314,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // octahedron
     Entity icosahedron = create_entity();
     // mesh
-    MeshComponent* icosahedron_mesh = create_icosahedron_mesh(0.5f, state->device);
-    if (icosahedron_mesh == NULL) return SDL_APP_FAILURE;
+    MeshComponent icosahedron_mesh = create_icosahedron_mesh(0.5f, state->device);
+    if (icosahedron_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE;
     add_mesh (icosahedron, icosahedron_mesh);
     // material
     MaterialComponent icosahedron_material = create_phong_material ((vec3){0.5f, 0.0f, 0.5f}, SIDE_FRONT, state);
@@ -353,7 +353,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     // TODO: handle no camera
     Entity cam = state->camera_entity;
     if (cam == (Entity)-1) return SDL_APP_CONTINUE;
-    TransformComponent* cam_trans = &transforms[cam];
+    TransformComponent* cam_trans = get_transform(cam);
 
     // dt
     const Uint64 now = SDL_GetPerformanceCounter();
@@ -371,6 +371,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
 void SDL_AppQuit(void* appstate, SDL_AppResult result) {
     AppState* state = (AppState*)appstate;
+    free_pools(state);
     if (state->white_texture) {
         SDL_ReleaseGPUTexture(state->device, state->white_texture);
     }

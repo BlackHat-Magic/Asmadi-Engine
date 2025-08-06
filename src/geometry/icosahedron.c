@@ -6,12 +6,13 @@
 #include "geometry/g_common.h"
 #include "math/matrix.h"
 
-MeshComponent* create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
+MeshComponent create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
+    MeshComponent null_mesh = (MeshComponent) {0};
     const int num_vertices = 12;
     float* vertices = (float*)malloc(num_vertices * 8 * sizeof(float));
     if (!vertices) {
         SDL_Log("Failed to allocate vertices for icosahedron mesh");
-        return NULL;
+        return null_mesh;
     }
 
     float t = (1.0f + sqrtf(5.0f)) / 2.0f;
@@ -104,23 +105,17 @@ MeshComponent* create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
     size_t vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     free(vertices);
-    if (vbo_failed) return NULL;
+    if (vbo_failed) return null_mesh;
 
     SDL_GPUBuffer* ibo = NULL;
     size_t indices_size = 60 * sizeof(uint16_t);
     int ibo_failed = upload_indices(device, standard_indices, indices_size, &ibo);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);
-        return NULL;
+        return null_mesh;
     }
 
-    MeshComponent* out_mesh = (MeshComponent*)malloc(sizeof(MeshComponent));
-    if (!out_mesh) {
-        SDL_ReleaseGPUBuffer(device, vbo);
-        SDL_ReleaseGPUBuffer(device, ibo);
-        return NULL;
-    }
-    *out_mesh = (MeshComponent){
+    MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
         .num_vertices = (uint32_t)num_vertices,
         .index_buffer = ibo,
