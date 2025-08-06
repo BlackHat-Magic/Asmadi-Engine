@@ -16,8 +16,6 @@
 
 #include <core/appstate.h>
 #include <ecs/ecs.h>
-#include <geometry/box.h>
-#include <geometry/capsule.h>
 #include <geometry/circle.h>
 #include <geometry/cone.h>
 #include "geometry/cylinder.h"
@@ -158,17 +156,6 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     add_material(billboard, billboard_material);
     // billboard transform
     add_transform(billboard, (vec3){4.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
-
-    // capsule
-    Entity capsule = create_entity();
-    MeshComponent capsule_mesh = create_capsule_mesh (0.5f, 1.0f, 8, 16, state->device);
-    if (capsule_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE;
-    add_mesh(capsule, capsule_mesh);
-    // capsule material
-    MaterialComponent capsule_material = create_phong_material ((vec3) {0.0f, 1.0f, 0.0f}, SIDE_FRONT, state);
-    add_material (capsule, capsule_material);
-    // capsule transform
-    add_transform(capsule, (vec3) {6.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
 
     // circle
     Entity circle = create_entity();
