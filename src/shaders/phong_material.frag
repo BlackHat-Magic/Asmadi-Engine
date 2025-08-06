@@ -14,11 +14,9 @@ layout(std140, set = 1, binding = 0) uniform UBO {
     mat4 model;
     mat4 view;
     mat4 projection;
-    vec3 ambient_color;
-    float ambient_strength;
-    vec3 pointLightPos;
-    vec3 pointLightColor;
-    float pointLightIntensity;
+    vec4 ambient_color;
+    vec4 pointLightPos;
+    vec4 pointLightColor;
 } ubo;
 
 void main() {
@@ -26,13 +24,16 @@ void main() {
     vec3 objectColor = texColor.rgb * fragColor;
 
     // Ambient (unchanged)
-    vec3 ambient = ubo.ambient_strength * ubo.ambient_color * objectColor;
+    vec3 ambient_rgb = vec3(ubo.ambient_color.x, ubo.ambient_color.y, ubo.ambient_color.z);
+    vec3 ambient = ubo.ambient_color.w * ambient_rgb * objectColor;
 
     // Diffuse (new)
+    vec3 point_rgb = vec3(ubo.pointLightColor.x, ubo.pointLightColor.y, ubo.pointLightColor.z);
+    vec3 point_pos_xyz = vec3(ubo.pointLightPos.x, ubo.pointLightPos.y, ubo.pointLightPos.z);
     vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(ubo.pointLightPos - FragPos);
+    vec3 lightDir = normalize(point_pos_xyz - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = ubo.pointLightIntensity * ubo.pointLightColor * diff * objectColor;
+    vec3 diffuse = ubo.pointLightColor.w * point_rgb * diff * objectColor;
 
     // Combine (for now, ambient + diffuse; add specular next)
     vec3 result = ambient + diffuse;

@@ -14,11 +14,9 @@ layout(std140, set = 1, binding = 0) uniform UBO {
     mat4 model;
     mat4 view;
     mat4 projection;
-    vec3 ambient_color;
-    float ambient_strength;
-    vec3 pointLightPos;    // New: Point light position (world space)
-    vec3 pointLightColor;  // New: Point light color
-    float pointLightIntensity;  // New
+    vec4 ambient_color;
+    vec4 pointLightPos;    // New: Point light position (world space)
+    vec4 pointLightColor;  // New: Point light color
 } ubo;
 
 void main() {
