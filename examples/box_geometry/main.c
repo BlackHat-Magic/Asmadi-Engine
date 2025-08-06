@@ -1,8 +1,11 @@
+#include "math/matrix.h"
 #define SDL_MAIN_USE_CALLBACKS 1
 
-#include <SDL3/SDL_main.h>
 #include <stdlib.h>
 
+#include <SDL3/SDL_main.h>
+
+#include <ecs/ecs.h>
 #include <geometry/box.h>
 #include <material/m_common.h>
 #include <material/phong_material.h>
@@ -160,7 +163,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
     // point light
     Entity point_light = create_entity();
     add_point_light(point_light, (vec3) {1.0f, 1.0f, 1.0f}, 1.0f);
-    add_transform(point_light, (vec3){0.0f, 2.0f, -2.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
+    add_transform(point_light, (vec3){2.0f, 2.0f, -2.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){1.0f, 1.0f, 1.0f});
 
     // camera
     Entity camera = create_entity();
@@ -190,6 +193,20 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     float dt = (float)(now - state->last_time) /
                (float)(SDL_GetPerformanceFrequency());
     state->last_time = now;
+
+    TransformComponent box_transform = *get_transform(box);
+    vec3 box_rotation = euler_from_quat(box_transform.rotation);
+    box_rotation.x += 0.005f;
+    box_rotation.z += 0.01f;
+    box_transform.rotation = quat_from_euler(box_rotation);
+    add_transform(box, box_transform.position, box_rotation, box_transform.scale);
+
+    TransformComponent tbox_transform = *get_transform(tbox);
+    vec3 tbox_rotation = euler_from_quat(tbox_transform.rotation);
+    tbox_rotation.x -= 0.005f;
+    tbox_rotation.z -= 0.01f;
+    tbox_transform.rotation = quat_from_euler(tbox_rotation);
+    add_transform(tbox, tbox_transform.position, tbox_rotation, tbox_transform.scale);
 
     // camera forward vector
     fps_controller_update_system(state, dt);
