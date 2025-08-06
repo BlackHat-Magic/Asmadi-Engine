@@ -14,6 +14,8 @@ MaterialComponent materials[MAX_ENTITIES];
 CameraComponent cameras[MAX_ENTITIES];
 FpsCameraControllerComponent fps_controllers[MAX_ENTITIES] = {0};
 BillboardComponent billboards[MAX_ENTITIES] = {0};
+AmbientLightComponent ambient_lights[MAX_ENTITIES] = {0};
+PointLightComponent point_lights[MAX_ENTITIES] = {0};
 uint8_t entity_active[MAX_ENTITIES] = {0};
 
 Entity create_entity() {
@@ -85,6 +87,26 @@ void add_fps_controller (Entity e, float sense, float speed) {
 void add_billboard(Entity e) {
     if (e >= MAX_ENTITIES || !entity_active[e]) return;
     billboards[e] = 1;
+}
+
+void add_ambient_light(Entity e, vec3 rgb, float brightness) {
+    if (e >= MAX_ENTITIES || !entity_active[e]) return;
+    ambient_lights[e] = (vec4) {
+        rgb.x,
+        rgb.y,
+        rgb.z,
+        brightness
+    };
+}
+
+void add_point_light(Entity e, vec3 rgb, float brightness) {
+    if (e >= MAX_ENTITIES || !entity_active[e]) return;
+    point_lights[e] = (vec4) {
+        rgb.x,
+        rgb.y,
+        rgb.z,
+        brightness
+    };
 }
 
 void fps_controller_event_system(AppState* state, SDL_Event* event) {
@@ -256,9 +278,39 @@ SDL_AppResult render_system(AppState* state) {
     };
     SDL_SetGPUViewport(pass, &viewport);
 
+    // TODO: More than 64 lights
+    int point_light_idx = 0;
+    vec4 light_positions[MAX_LIGHTS] = {0};
+    vec4 light_colors[MAX_LIGHTS] = {0};
+    for (Entity e = 0; e < MAX_ENTITIES; e++) {
+        if(point_light_idx > 63) break;
+        if (!entity_active[e]) continue;
+        if (point_lights[e].z <= 0.0f) continue;
+
+        light_positions[point_light_idx] = (vec4) {
+            transforms[e].position.x,
+            transforms[e].position.y,
+            transforms[e].position.z,
+            0.0f
+        };
+        light_colors[point_light_idx] = point_lights[e];
+        point_light_idx++;
+    }
+    int ambient_light_idx = 0;
+    vec4 ambient_colors[MAX_LIGHTS] = {0};
+    for (Entity e = 0; e < MAX_ENTITIES; e++) {
+        if (ambient_light_idx > 63) break;
+        if (!entity_active[e]) continue;
+        if (ambient_lights[e].z <= 0.0f) continue;
+
+        ambient_colors[ambient_light_idx] = ambient_lights[e];
+        ambient_light_idx++;
+    }
+
     for (Entity e = 0; e < MAX_ENTITIES; e++) {
         if (!entity_active[e] || !meshes[e] || !meshes[e]->vertex_buffer)
             continue;  // skip if no mesh/inactive
+        if (!materials[e].pipeline) continue;
 
         mat4 model;
         mat4_identity(model);
@@ -279,28 +331,24 @@ SDL_AppResult render_system(AppState* state) {
         memcpy(ubo.model, model, sizeof(mat4));
         memcpy(ubo.view, view, sizeof(mat4));
         memcpy(ubo.proj, proj, sizeof(mat4));
-        // Colors: use material.color (shader uses colors[3])
+        memcpy(ubo.point_light_pos, light_positions, point_light_idx * sizeof(vec4));
+        memcpy(ubo.point_light_color, light_colors, point_light_idx * sizeof(vec4));
+        memcpy(ubo.ambient_color, ambient_colors, ambient_light_idx * sizeof (vec4));
+
+        // Colors: use material.color
         ubo.color.w = materials[e].color.x;
         ubo.color.x = materials[e].color.y;
         ubo.color.y = materials[e].color.z;
         ubo.color.z = 1.0f; // alpha 1.0
-        // TODO: non-hardcoded lighting
-        ubo.ambient_color = (vec4) {1.0f, 1.0f, 1.0f, 0.1f};
-        ubo.point_light_pos = (vec4) {6.0f, 0.0f, -2.0f, 0.0f};
-        ubo.point_light_color = (vec4) {1.0f, 1.0f, 0.8f, 1.0f}; // slightly yellow
-        ubo.camera_pos = (vec4) {
+
+        ubo.camera_pos = (vec4){
             cam_trans->position.x,
             cam_trans->position.y,
             cam_trans->position.z,
             0.0f
         };
 
-
-        if (materials[e].pipeline) {
-            SDL_BindGPUGraphicsPipeline(pass, materials[e].pipeline);
-        } else {
-            continue;
-        }
+        SDL_BindGPUGraphicsPipeline(pass, materials[e].pipeline);
 
         SDL_PushGPUVertexUniformData(cmd, 0, &ubo, sizeof(UBOData));
 
