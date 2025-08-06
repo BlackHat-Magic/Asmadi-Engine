@@ -1,5 +1,4 @@
 # Placeholder to add example subdirs
-add_subdirectory(demo)
 add_subdirectory(geometry_box)
 add_subdirectory(geometry_capsule)
 add_subdirectory(geometry_circle)
@@ -13,4 +12,5 @@ add_subdirectory(geometry_ring)
 add_subdirectory(geometry_sphere)
 add_subdirectory(geometry_torus)
 add_subdirectory(geometry_tetrahedron)
+add_subdirectory(stress_test_ico)
 # Add more examples here, e.g., add_subdirectory(simple-box)
