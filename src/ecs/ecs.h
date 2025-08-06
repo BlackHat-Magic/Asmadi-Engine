@@ -23,6 +23,7 @@ typedef struct {
     vec4 ambient_color; // RGB + Strength
     vec4 point_light_pos; // xyz + padding (16-byte aligned)
     vec4 point_light_color; // RGB + Strength
+    vec4 camera_pos;
 } UBOData;
 
 typedef uint32_t Entity;

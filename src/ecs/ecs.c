@@ -288,6 +288,12 @@ SDL_AppResult render_system(AppState* state) {
         ubo.ambient_color = (vec4) {1.0f, 1.0f, 1.0f, 0.1f};
         ubo.point_light_pos = (vec4) {6.0f, 0.0f, -2.0f, 0.0f};
         ubo.point_light_color = (vec4) {1.0f, 1.0f, 0.8f, 1.0f}; // slightly yellow
+        ubo.camera_pos = (vec4) {
+            cam_trans->position.x,
+            cam_trans->position.y,
+            cam_trans->position.z,
+            0.0f
+        };
 
 
         if (materials[e].pipeline) {
