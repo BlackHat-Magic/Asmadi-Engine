@@ -6,17 +6,18 @@
 #include "geometry/g_common.h"
 #include "math/matrix.h"
 
-MeshComponent* create_lathe_mesh(
+MeshComponent create_lathe_mesh(
     vec2* points, int num_points, int phi_segments,
     float phi_start, float phi_length, SDL_GPUDevice* device
 ) {
+    MeshComponent null_mesh = (MeshComponent) {0};
     if (num_points < 2) {
         SDL_Log("Lathe requires at least 2 points");
-        return NULL;
+        return null_mesh;
     }
     if (phi_segments < 3) {
         SDL_Log("Lathe requires at least 3 phi segments");
-        return NULL;
+        return null_mesh;
     }
 
     int num_phi = phi_segments + 1;  // Rings closed
@@ -25,13 +26,13 @@ MeshComponent* create_lathe_mesh(
     // Check for uint16_t overflow (max 65535 verts); extend to uint32_t if needed later
     if (num_vertices > 65535) {
         SDL_Log("Lathe mesh too large for uint16_t indices");
-        return NULL;
+        return null_mesh;
     }
 
     float* vertices = (float*)malloc(num_vertices * 8 * sizeof(float));  // pos.x,y,z + normal.x,y,z + uv.u,v
     if (!vertices) {
         SDL_Log("Failed to allocate vertices for lathe mesh");
-        return NULL;
+        return null_mesh;
     }
 
     // Generate vertices
@@ -70,7 +71,7 @@ MeshComponent* create_lathe_mesh(
     if (!indices) {
         SDL_Log("Failed to allocate indices for lathe mesh");
         free(vertices);
-        return NULL;
+        return null_mesh;
     }
 
     int index_idx = 0;
@@ -102,7 +103,7 @@ MeshComponent* create_lathe_mesh(
     free(vertices);
     if (vbo_failed) {
         free(indices);
-        return NULL;  // Logging handled in upload_vertices
+        return null_mesh;  // Logging handled in upload_vertices
     }
 
     SDL_GPUBuffer* ibo = NULL;
@@ -111,17 +112,10 @@ MeshComponent* create_lathe_mesh(
     free(indices);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);
-        return NULL;  // Logging handled in upload_indices
+        return null_mesh;  // Logging handled in upload_indices
     }
 
-    MeshComponent* out_mesh = (MeshComponent*)malloc(sizeof(MeshComponent));
-    if (!out_mesh) {
-        SDL_Log("Failed to allocate MeshComponent for lathe");
-        SDL_ReleaseGPUBuffer(device, vbo);
-        SDL_ReleaseGPUBuffer(device, ibo);
-        return NULL;
-    }
-    *out_mesh = (MeshComponent){
+    MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
         .num_vertices = (uint32_t)num_vertices,
         .index_buffer = ibo,

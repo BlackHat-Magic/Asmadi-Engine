@@ -4,23 +4,23 @@
 #include <stdlib.h>
 
 #include "geometry/lathe.h"
-#include "geometry/g_common.h"
 
-MeshComponent* create_torus_mesh(
+MeshComponent create_torus_mesh(
     float radius, float tube_radius, int radial_segments, int tubular_segments,
     float arc, SDL_GPUDevice* device
 ) {
+    MeshComponent null_mesh = (MeshComponent) {0};
     if (radial_segments < 3 || tubular_segments < 3) {
         SDL_Log("Torus must have at least 3 segments in each direction");
-        return NULL;
+        return null_mesh;
     }
     if (tube_radius <= 0.0f || radius <= 0.0f) {
         SDL_Log("Torus radii must be positive");
-        return NULL;
+        return null_mesh;
     }
     if (arc <= 0.0f || arc > 2.0f * (float)M_PI) {
         SDL_Log("Torus arc must be between 0 and 2*PI");
-        return NULL;
+        return null_mesh;
     }
 
     // Generate the tube circle path in the XZ plane (to be rotated around Y)
@@ -28,7 +28,7 @@ MeshComponent* create_torus_mesh(
     vec2* points = (vec2*)malloc(num_points * sizeof(vec2));
     if (!points) {
         SDL_Log("Failed to allocate points for torus path");
-        return NULL;
+        return null_mesh;
     }
 
     for (int i = 0; i < num_points; i++) {
@@ -42,12 +42,12 @@ MeshComponent* create_torus_mesh(
     // To lay it flat (hole along Z), add a 90-degree X rotation
     // to the entity transform after creation, e.g., add_transform(e, pos, (vec3){M_PI/2, 0, 0}, scale);
     // lathe returns normals
-    MeshComponent* mesh = create_lathe_mesh(
+    MeshComponent mesh = create_lathe_mesh(
         points, num_points, tubular_segments, 0.0f, arc, device
     );
 
     free(points);
-    if (!mesh) {
+    if (mesh.vertex_buffer == NULL) {
         SDL_Log("Failed to create lathed mesh for torus");
     }
     return mesh;

@@ -2,4 +2,4 @@
 
 #include "ecs/ecs.h"
 
-MeshComponent* create_circle_mesh(float radius, int segments, SDL_GPUDevice* device);
+MeshComponent create_circle_mesh (float radius, int segments, SDL_GPUDevice* device);

@@ -4,7 +4,8 @@
 
 #include "geometry/g_common.h"
 
-MeshComponent* create_plane_mesh(float width, float height, int width_segments, int height_segments, SDL_GPUDevice* device) {
+MeshComponent create_plane_mesh(float width, float height, int width_segments, int height_segments, SDL_GPUDevice* device) {
+    MeshComponent null_mesh = (MeshComponent) {0};
     if (width_segments < 1) width_segments = 1;
     if (height_segments < 1) height_segments = 1;
 
@@ -15,20 +16,20 @@ MeshComponent* create_plane_mesh(float width, float height, int width_segments, 
     // For now, assume small segments; add uint32_t support later if required
     if (num_vertices > 65535) {
         SDL_Log("Plane mesh too large for uint16_t indices");
-        return NULL;
+        return null_mesh;
     }
 
     float* vertices = (float*)malloc(num_vertices * 8 * sizeof(float));  // pos.x,y,z + normal.x,y,z + uv.u,v
     if (!vertices) {
         SDL_Log("Failed to allocate vertices for plane mesh");
-        return NULL;
+        return null_mesh;
     }
 
     uint16_t* indices = (uint16_t*)malloc(num_indices * sizeof(uint16_t));
     if (!indices) {
         SDL_Log("Failed to allocate indices for plane mesh");
         free(vertices);
-        return NULL;
+        return null_mesh;
     }
 
     // Generate vertices (grid in XY, Z=0)
@@ -80,7 +81,7 @@ MeshComponent* create_plane_mesh(float width, float height, int width_segments, 
     free(vertices);
     if (vbo_failed) {
         free(indices);
-        return NULL;  // logging handled in upload_vertices()
+        return null_mesh;  // logging handled in upload_vertices()
     }
 
     SDL_GPUBuffer* ibo = NULL;
@@ -88,17 +89,10 @@ MeshComponent* create_plane_mesh(float width, float height, int width_segments, 
     int ibo_failed = upload_indices(device, indices, indices_size, &ibo);
     free(indices);
     if (ibo_failed) {
-        return NULL;  // logging handled in upload_indices()
+        return null_mesh;  // logging handled in upload_indices()
     }
 
-    MeshComponent* out_mesh = (MeshComponent*)malloc(sizeof(MeshComponent));
-    if (!out_mesh) {
-        SDL_Log("Failed to allocate MeshComponent for plane");
-        SDL_ReleaseGPUBuffer(device, vbo);
-        SDL_ReleaseGPUBuffer(device, ibo);
-        return NULL;
-    }
-    *out_mesh = (MeshComponent){
+    MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
         .num_vertices = (uint32_t)num_vertices,
         .index_buffer = ibo,
