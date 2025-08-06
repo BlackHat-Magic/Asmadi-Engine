@@ -52,3 +52,4 @@ oh wow this is getting complicated fast
 - [ ] UV Mapping for Mesh Primitives
 - [ ] Fix Shading on unculled back faces
 - [ ] Sphere butt
+- [ ] Built-in performance profiler
