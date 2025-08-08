@@ -1,6 +1,5 @@
 #include "math/matrix.h"
 
-#include <time.h>
 #include <stdlib.h>
 #include <math.h>
 

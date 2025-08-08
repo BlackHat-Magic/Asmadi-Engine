@@ -150,6 +150,10 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
 
     state->last_time = SDL_GetPerformanceCounter();
 
+    // postprocessing
+    state->enable_post =false;
+    init_appstate(state);
+
     *appstate = state;
     return SDL_APP_CONTINUE;
 }

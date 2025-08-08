@@ -47,6 +47,8 @@ if(COMPILE_SHADERS AND GLSLANG_VALIDATOR)
         basic_material.frag
         phong_material.vert
         phong_material.frag
+        post.vert
+        post_sobel.frag
     )
 
     foreach(SHADER ${SHADERS})

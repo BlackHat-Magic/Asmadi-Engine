@@ -121,12 +121,16 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         return SDL_APP_FAILURE;
     }
 
+    // postprocessing
+    state->enable_post =true;
+    init_appstate(state);
+
     // torus
     torus = create_entity();
     MeshComponent torus_mesh = create_torus_mesh(0.5f, 0.2f, 16, 32, (float)M_PI * 2.0f, state->device);
     if (torus_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE;
     add_mesh(torus, torus_mesh);
-    // torus material
+    // torus materialas
     MaterialComponent torus_material = create_phong_material ((vec3) {1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
     add_material (torus, torus_material);
     // torus transform
@@ -181,10 +185,6 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     fps_controller_update_system(state, dt);
 
     render_system(state);
-
-    // postprocessing
-    state->enable_post =false;
-    init_appstate(state);
 
     return SDL_APP_CONTINUE;
 }

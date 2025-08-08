@@ -123,4 +123,7 @@ void fps_controller_event_system(AppState* state, SDL_Event* event);
 void fps_controller_update_system(AppState* state, float dt);
 SDL_AppResult render_system(AppState* state);
 
+void init_appstate(AppState* state);
+void cleanup_appstate(AppState* state);
+
 void free_pools(AppState* state);

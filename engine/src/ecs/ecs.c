@@ -7,6 +7,8 @@
 #include "ecs/ecs.h"
 #include <math.h>
 #include "math/matrix.h"
+#include "geometry/g_common.h"
+#include "material/m_common.h"
 
 static uint32_t next_entity_id = 0;
 
@@ -330,6 +332,7 @@ SDL_AppResult render_system(AppState* state) {
     }
 
     if (state->dwidth != state->width || state->dheight != state->height) {
+        // Recreate depth texture (always needed)
         if (state->depth_texture) SDL_ReleaseGPUTexture(state->device, state->depth_texture);
         SDL_GPUTextureCreateInfo depth_info = {
             .type = SDL_GPU_TEXTURETYPE_2D,
@@ -346,6 +349,26 @@ SDL_AppResult render_system(AppState* state) {
             SDL_SubmitGPUCommandBuffer(cmd);
             return SDL_APP_FAILURE;
         }
+
+        // Recreate scene texture only if post enabled
+        if (state->enable_post) {
+            if (state->scene_texture) SDL_ReleaseGPUTexture(state->device, state->scene_texture);
+            SDL_GPUTextureCreateInfo scene_info = {
+                .type = SDL_GPU_TEXTURETYPE_2D,
+                .format = state->swapchain_format,
+                .width = state->width,
+                .height = state->height,
+                .layer_count_or_depth = 1,
+                .num_levels = 1,
+                .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER
+            };
+            state->scene_texture = SDL_CreateGPUTexture(state->device, &scene_info);
+            if (!state->scene_texture) {
+                SDL_Log("Failed to recreate scene texture; disabling post-processing: %s", SDL_GetError());
+                state->enable_post = false;
+            }
+        }
+
         state->dwidth = state->width;
         state->dheight = state->height;
     }
@@ -369,25 +392,7 @@ SDL_AppResult render_system(AppState* state) {
     float aspect = (float)state->width / (float)state->height;
     mat4_perspective(proj, cam_comp->fov * (float)M_PI / 180.0f, aspect, cam_comp->near_clip, cam_comp->far_clip);
 
-    SDL_GPUColorTargetInfo color_target_info = {
-        .texture = swapchain,
-        .clear_color = {0.0f, 0.0f, 0.0f, 1.0f},
-        .load_op = SDL_GPU_LOADOP_CLEAR,
-        .store_op = SDL_GPU_STOREOP_STORE
-    };
-
-    SDL_GPUDepthStencilTargetInfo depth_target_info = {
-        .texture = state->depth_texture,
-        .load_op = SDL_GPU_LOADOP_CLEAR,
-        .store_op = SDL_GPU_STOREOP_STORE,
-        .cycle = false,
-        .clear_depth = 1.0f
-    };
-
-    SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(cmd, &color_target_info, 1, &depth_target_info);
-    SDL_GPUViewport viewport = {0.0f, 0.0f, (float)state->width, (float)state->height, 0.0f, 1.0f};
-    SDL_SetGPUViewport(pass, &viewport);
-
+    // Prepare lights (shared for both paths)
     int ambient_idx = 0;
     vec4 ambient_colors[MAX_LIGHTS] = {0};
     for (uint32_t i = 0; i < ambient_light_pool.count; i++) {
@@ -412,6 +417,46 @@ SDL_AppResult render_system(AppState* state) {
         point_idx++;
     }
 
+    // Viewport (shared)
+    SDL_GPUViewport viewport = {0.0f, 0.0f, (float)state->width, (float)state->height, 0.0f, 1.0f};
+
+    // Depth target (shared)
+    SDL_GPUDepthStencilTargetInfo depth_target_info = {
+        .texture = state->depth_texture,
+        .load_op = SDL_GPU_LOADOP_CLEAR,
+        .store_op = SDL_GPU_STOREOP_STORE,
+        .cycle = false,
+        .clear_depth = 1.0f
+    };
+
+    SDL_GPURenderPass* scene_pass = NULL;
+    if (state->enable_post) {
+        // Render scene to off-screen texture
+        SDL_GPUColorTargetInfo scene_color_info = {
+            .texture = state->scene_texture,
+            .clear_color = {0.0f, 0.0f, 0.0f, 1.0f},
+            .load_op = SDL_GPU_LOADOP_CLEAR,
+            .store_op = SDL_GPU_STOREOP_STORE
+        };
+        scene_pass = SDL_BeginGPURenderPass(cmd, &scene_color_info, 1, &depth_target_info);
+    } else {
+        // Render scene directly to swapchain
+        SDL_GPUColorTargetInfo swap_color_info = {
+            .texture = swapchain,
+            .clear_color = {0.0f, 0.0f, 0.0f, 1.0f},
+            .load_op = SDL_GPU_LOADOP_CLEAR,
+            .store_op = SDL_GPU_STOREOP_STORE
+        };
+        scene_pass = SDL_BeginGPURenderPass(cmd, &swap_color_info, 1, &depth_target_info);
+    }
+    if (!scene_pass) {
+        SDL_Log("Failed to begin scene render pass: %s", SDL_GetError());
+        SDL_SubmitGPUCommandBuffer(cmd);
+        return SDL_APP_FAILURE;
+    }
+    SDL_SetGPUViewport(scene_pass, &viewport);
+
+    // Render entities (same for both paths)
     for (uint32_t i = 0; i < mesh_pool.count; i++) {
         Entity e = mesh_pool.index_to_entity[i];
         MeshComponent* mesh = &((MeshComponent*)mesh_pool.data)[i];
@@ -444,33 +489,190 @@ SDL_AppResult render_system(AppState* state) {
         ubo.color = (vec4){mat->color.x, mat->color.y, mat->color.z, 1.0f};
         ubo.camera_pos = (vec4){cam_trans->position.x, cam_trans->position.y, cam_trans->position.z, 0.0f};
 
-        SDL_BindGPUGraphicsPipeline(pass, mat->pipeline);
+        SDL_BindGPUGraphicsPipeline(scene_pass, mat->pipeline);
         SDL_PushGPUVertexUniformData(cmd, 0, &ubo, sizeof(UBOData));
 
         SDL_GPUTextureSamplerBinding tex_bind = {
             .texture = mat->texture ? mat->texture : state->white_texture,
             .sampler = state->sampler
         };
-        SDL_BindGPUFragmentSamplers(pass, 0, &tex_bind, 1);
+        SDL_BindGPUFragmentSamplers(scene_pass, 0, &tex_bind, 1);
 
         SDL_GPUBufferBinding vbo_binding = { .buffer = mesh->vertex_buffer, .offset = 0 };
-        SDL_BindGPUVertexBuffers(pass, 0, &vbo_binding, 1);
+        SDL_BindGPUVertexBuffers(scene_pass, 0, &vbo_binding, 1);
 
         if (mesh->index_buffer) {
             SDL_GPUBufferBinding ibo_binding = { .buffer = mesh->index_buffer, .offset = 0 };
-            SDL_BindGPUIndexBuffer(pass, &ibo_binding, mesh->index_size);
-            SDL_DrawGPUIndexedPrimitives(pass, mesh->num_indices, 1, 0, 0, 0);
+            SDL_BindGPUIndexBuffer(scene_pass, &ibo_binding, mesh->index_size);
+            SDL_DrawGPUIndexedPrimitives(scene_pass, mesh->num_indices, 1, 0, 0, 0);
         } else {
-            SDL_DrawGPUPrimitives(pass, mesh->num_vertices, 1, 0, 0);
+            SDL_DrawGPUPrimitives(scene_pass, mesh->num_vertices, 1, 0, 0);
         }
     }
 
-    SDL_EndGPURenderPass(pass);
+    SDL_EndGPURenderPass(scene_pass);
+
+    if (state->enable_post) {
+        // Post-processing pass: Apply Sobel to swapchain
+        SDL_GPUColorTargetInfo swap_color_info = {
+            .texture = swapchain,
+            .clear_color = {0.0f, 0.0f, 0.0f, 1.0f},
+            .load_op = SDL_GPU_LOADOP_CLEAR,
+            .store_op = SDL_GPU_STOREOP_STORE
+        };
+
+        SDL_GPURenderPass* post_pass = SDL_BeginGPURenderPass(cmd, &swap_color_info, 1, NULL);  // No depth
+        if (!post_pass) {
+            SDL_Log("Failed to begin post render pass: %s", SDL_GetError());
+            SDL_SubmitGPUCommandBuffer(cmd);
+            return SDL_APP_FAILURE;
+        }
+        SDL_SetGPUViewport(post_pass, &viewport);
+
+        SDL_BindGPUGraphicsPipeline(post_pass, state->post_pipeline);
+
+        // Push uniform (texel size for sampling offsets)
+        typedef struct {
+            float texelSize[2];
+        } PostUBO;
+        PostUBO pubo = { {1.0f / (float)state->width, 1.0f / (float)state->height} };
+        SDL_PushGPUFragmentUniformData(cmd, 0, &pubo, sizeof(PostUBO));
+
+        // Bind scene texture as sampler
+        SDL_GPUTextureSamplerBinding post_tex_bind = {
+            .texture = state->scene_texture,
+            .sampler = state->post_sampler
+        };
+        SDL_BindGPUFragmentSamplers(post_pass, 0, &post_tex_bind, 1);
+
+        // Bind quad buffers and draw
+        SDL_GPUBufferBinding vbo_binding = { .buffer = state->post_vbo, .offset = 0 };
+        SDL_BindGPUVertexBuffers(post_pass, 0, &vbo_binding, 1);
+
+        SDL_GPUBufferBinding ibo_binding = { .buffer = state->post_ibo, .offset = 0 };
+        SDL_BindGPUIndexBuffer(post_pass, &ibo_binding, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+
+        SDL_DrawGPUIndexedPrimitives(post_pass, 6, 1, 0, 0, 0);
+
+        SDL_EndGPURenderPass(post_pass);
+    }
+
     SDL_SubmitGPUCommandBuffer(cmd);
     return SDL_APP_CONTINUE;
 }
 
-void free_pools(AppState* state) {
+void init_appstate(AppState* state) {
+    // Assume state->device, state->swapchain_format, state->width, state->height, state->sampler are already set
+
+    state->scene_texture = NULL;  // Default to NULL
+    state->post_vbo = NULL;
+    state->post_ibo = NULL;
+    state->post_vert_shader = NULL;
+    state->post_frag_shader = NULL;
+    state->post_pipeline = NULL;
+
+    if (!state->enable_post) return;
+
+    // Create scene texture (initial)
+    SDL_GPUTextureCreateInfo scene_info = {
+        .type = SDL_GPU_TEXTURETYPE_2D,
+        .format = state->swapchain_format,
+        .width = state->width,
+        .height = state->height,
+        .layer_count_or_depth = 1,
+        .num_levels = 1,
+        .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER
+    };
+    state->scene_texture = SDL_CreateGPUTexture(state->device, &scene_info);
+    if (!state->scene_texture) {
+        SDL_Log("Failed to create scene texture: %s", SDL_GetError());
+        state->enable_post = false;  // Disable if creation fails
+        return;
+    }
+
+    // Create full-screen quad (clip space positions, dummy normals, UVs)
+    float post_vertices[4 * 8] = {
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,  // Bottom-left: uv 0,1
+        1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,  // Bottom-right: uv 1,1
+        1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f,  // Top-right: uv 1,0
+        -1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f   // Top-left: uv 0,0
+    };
+    uint16_t post_indices[6] = {0, 1, 2, 2, 3, 0};
+
+    upload_vertices(state->device, post_vertices, sizeof(post_vertices), &state->post_vbo);
+    upload_indices(state->device, post_indices, sizeof(post_indices), &state->post_ibo);
+
+    // Load post shaders (use your renamed files)
+    state->post_vert_shader = load_shader(state->device, "shaders/post.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX, 0, 0, 0, 0);
+    state->post_frag_shader = load_shader(state->device, "shaders/post_sobel.frag.spv", SDL_GPU_SHADERSTAGE_FRAGMENT, 1, 1, 0, 0);  // 1 sampler, 1 uniform buffer
+
+    if (!state->post_vert_shader || !state->post_frag_shader) {
+        SDL_Log("Failed to load post shaders; disabling post-processing");
+        state->enable_post = false;
+        return;
+    }
+
+    // Build post pipeline (no depth, no cull, etc.)
+    SDL_GPUGraphicsPipelineCreateInfo post_pipe_info = {
+        .target_info = {
+            .num_color_targets = 1,
+            .color_target_descriptions = (SDL_GPUColorTargetDescription[]){{.format = state->swapchain_format}},
+            .has_depth_stencil_target = false
+        },
+        .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
+        .vertex_shader = state->post_vert_shader,
+        .fragment_shader = state->post_frag_shader,
+        .vertex_input_state = {
+            .num_vertex_buffers = 1,
+            .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[]){{
+                .slot = 0,
+                .pitch = 8 * sizeof(float),
+                .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+                .instance_step_rate = 0
+            }},
+            .num_vertex_attributes = 3,
+            .vertex_attributes = (SDL_GPUVertexAttribute[]){
+                {.location = 0, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = 0},  // pos
+                {.location = 1, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = 3 * sizeof(float)},  // norm (unused)
+                {.location = 2, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, .offset = 6 * sizeof(float)}   // uv
+            }
+        },
+        .rasterizer_state = {.fill_mode = SDL_GPU_FILLMODE_FILL, .cull_mode = SDL_GPU_CULLMODE_NONE, .front_face = SDL_GPU_FRONTFACE_CLOCKWISE},
+        .depth_stencil_state = {.enable_depth_test = false, .enable_depth_write = false, .enable_stencil_test = false}
+    };
+    state->post_pipeline = SDL_CreateGPUGraphicsPipeline(state->device, &post_pipe_info);
+    if (!state->post_pipeline) {
+        SDL_Log("Failed to create post pipeline; disabling post-processing: %s", SDL_GetError());
+        state->enable_post = false;
+    }
+
+    SDL_GPUSamplerCreateInfo post_sampler_info = {
+        .min_filter = SDL_GPU_FILTER_LINEAR,
+        .mag_filter = SDL_GPU_FILTER_LINEAR,
+        .mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR,
+        .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+        .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+        .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+        .max_anisotropy = 1.0f,
+        .enable_anisotropy = false
+    };
+    state->post_sampler = SDL_CreateGPUSampler(state->device, &post_sampler_info);
+    if (!state->post_sampler) {
+        SDL_Log("Failed to create post sampler: %s", SDL_GetError());
+        state->enable_post = false;
+        return;
+    }
+}
+
+void free_pools(AppState* state) {    if (state->scene_texture) SDL_ReleaseGPUTexture(state->device, state->scene_texture);
+    if (state->scene_texture) SDL_ReleaseGPUTexture(state->device, state->scene_texture);
+    if (state->post_vbo) SDL_ReleaseGPUBuffer(state->device, state->post_vbo);
+    if (state->post_ibo) SDL_ReleaseGPUBuffer(state->device, state->post_ibo);
+    if (state->post_vert_shader) SDL_ReleaseGPUShader(state->device, state->post_vert_shader);
+    if (state->post_frag_shader) SDL_ReleaseGPUShader(state->device, state->post_frag_shader);
+    if (state->post_pipeline) SDL_ReleaseGPUGraphicsPipeline(state->device, state->post_pipeline);
+    if (state->post_sampler) SDL_ReleaseGPUSampler(state->device, state->post_sampler);
+
     // Destroy all entities to release resources (e.g., GPU buffers)
     for (uint32_t i = 0; i < next_entity_id; i++) {
         destroy_entity(state, i);

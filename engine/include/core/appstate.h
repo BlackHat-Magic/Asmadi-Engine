@@ -24,5 +24,14 @@ typedef struct {
     Uint64 current_time;
     bool quit;
 
+    SDL_GPUTexture* scene_texture;  // Off-screen render target for scene
+    SDL_GPUBuffer* post_vbo;  // Vertex buffer for full-screen quad
+    SDL_GPUBuffer* post_ibo;  // Index buffer for full-screen quad
+    SDL_GPUShader* post_vert_shader;
+    SDL_GPUShader* post_frag_shader;
+    SDL_GPUGraphicsPipeline* post_pipeline;
+    SDL_GPUSampler* post_sampler;
+    bool enable_post;
+
     Entity camera_entity;
 } AppState;
