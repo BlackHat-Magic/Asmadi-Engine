@@ -1,9 +1,22 @@
+<div align="center">
+
 # Asmadi Engine
 
-oh wow this is getting complicated fast
+A Simple, ECS-based game engine written in C using SDL3's GPU API
 
-## Todo
-- [ ] Geometry
+</div>
+
+## Overview
+
+The Asmadi Game Engine is a game engine using SDL3's GPU API to create 3D accelerated graphical applications with Vulkan (and soon hopefully WebGPU). I might add Metal support if I feel like it.
+
+### Goals
+
+The main goal with this project was to learn graphics programming. In game development, I often find myself knowing exactly what I want the code to look like, but unsure of how to tell the game engine how to do that. So, I figured that several hundred to several thousand hours of trial and error should save me about thirty minutes of reading the Godot Documentation.
+
+### Features
+
+- [ ] Three.js-like API for creating simple geometries
     - [X] ~~Box~~
     - [X] ~~Plane~~
     - [X] ~~Capsule~~
@@ -24,7 +37,8 @@ oh wow this is getting complicated fast
     - [X] ~~Torus~~
     - [ ] Torus Knot?
     - [ ] Tube
-- [ ] Math
+    - [ ] GLTF loader
+- [ ] Various Math Tools
     - [ ] Random Integers
     - [ ] Random Floats
     - [ ] Random Choice
@@ -32,24 +46,24 @@ oh wow this is getting complicated fast
     - [ ] Splines
     - [ ] LERP
 - [ ] Materials
-    - [ ] Basic Material
-        - I still feel like this needs work
+    - [X] ~~Basic Material~~
     - [ ] Depth Material
     - [ ] Distance Material?
     - [ ] Lambert Material
     - [ ] Matcap Material?
     - [ ] Normal Material
-    - [ ] Phong Material
+    - [X] ~~Phong Material~~
     - [ ] Standard/Physical Material
     - [ ] Toon Material
-- [ ] Materials
-    - [X] ~~MeshBasicMaterial~~
-    - [X] ~~MeshPhongMaterial~~
-    - [ ] MeshLambertMaterial
-    - [ ] MeshDepthMaterial
-- [ ] Controllers
+    - [ ] UV Mapping for Mesh Primitives
+- [ ] Character Controllers
 - [ ] Physics
-- [ ] UV Mapping for Mesh Primitives
-- [ ] Fix Shading on unculled back faces
+    - [ ] TinyPhysicsEngine-like soft body physics for embedded devices
+    - [ ] SDF-based primitive-only collision system
+    - [ ] Conventional primitive and mesh collision system with soft body support
+- [ ] Performance Profiler
+
+## Todo
+
 - [ ] Sphere butt
 - [ ] Built-in performance profiler
