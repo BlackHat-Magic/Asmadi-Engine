@@ -446,6 +446,7 @@ SDL_AppResult render_system(AppState* state) {
 
         SDL_BindGPUGraphicsPipeline(pass, mat->pipeline);
         SDL_PushGPUVertexUniformData(cmd, 0, &ubo, sizeof(UBOData));
+        SDL_PushGPUFragmentUniformData (cmd, 0, &ubo, sizeof (UBOData));
 
         SDL_GPUTextureSamplerBinding tex_bind = {
             .texture = mat->texture ? mat->texture : state->white_texture,
