@@ -9,7 +9,7 @@ layout(set = 2, binding = 0) uniform sampler2D texture1;
 
 layout(location = 0) out vec4 outColor;
 
-layout(std140, set = 1, binding = 0) uniform UBO {
+layout(std140, set = 3, binding = 0) uniform UBO {
     vec4 color;
     mat4 model;
     mat4 view;

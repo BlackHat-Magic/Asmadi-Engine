@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)  # Updated for better support
-project(SpacePiratesEngine LANGUAGES C)
+project(AsmadiEngine LANGUAGES C)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)

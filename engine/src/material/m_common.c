@@ -236,10 +236,10 @@ int set_vertex_shader(
 // returns 0 on success 1 on failure
 int set_fragment_shader(
     SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath,
-    SDL_GPUTextureFormat swapchain_format
+    SDL_GPUTextureFormat swapchain_format, Uint32 sampler_count, Uint32 uniform_buffer_count
 ) {
     mat->fragment_shader =
-        load_shader(device, filepath, SDL_GPU_SHADERSTAGE_FRAGMENT, 1, 0, 0, 0);
+        load_shader(device, filepath, SDL_GPU_SHADERSTAGE_FRAGMENT, sampler_count, uniform_buffer_count, 0, 0);
     if (mat->fragment_shader == NULL)
         return 1;  // logging handled in load_shader()
     if (mat->vertex_shader && mat->fragment_shader) {

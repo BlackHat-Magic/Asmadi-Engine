@@ -10,7 +10,7 @@ SDL_GPUTexture* load_texture(SDL_GPUDevice* device, const char* bmp_file_path);
 
 int set_vertex_shader (SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath, SDL_GPUTextureFormat swapchain_format);
 
-int set_fragment_shader (SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath, SDL_GPUTextureFormat swapchain_format);
+int set_fragment_shader (SDL_GPUDevice* device, MaterialComponent* mat, const char* filepath, SDL_GPUTextureFormat swapchain_format, Uint32 sampler_count, Uint32 uniform_buffer_count);
 
 SDL_GPUTexture* create_white_texture(SDL_GPUDevice* device);
 
