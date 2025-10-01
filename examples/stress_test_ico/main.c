@@ -20,6 +20,13 @@
 
 Entity icosahedrons[8000];
 
+Uint64 frame_start;
+Uint64 rot_time;
+Uint64 render_time;
+double rot_time_ms;
+double render_time_ms;
+Uint64 frame_count;
+
 SDL_AppResult SDL_AppEvent (void* appstate, SDL_Event* event) {
     AppState* state = (AppState*)appstate;
 
@@ -212,6 +219,8 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
                (float)(SDL_GetPerformanceFrequency());
     state->last_time = now;
 
+    frame_start = SDL_GetTicksNS ();
+
     for (int i = 0; i < 8000; i++) {
         Entity icosahedron = icosahedrons[i];
 
@@ -223,10 +232,20 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
         add_transform(icosahedron, transform.position, rotation, transform.scale);
     }
 
+    rot_time = SDL_GetTicksNS () - frame_start;
+    rot_time_ms = rot_time / 1e6;
+
     // camera forward vector
     fps_controller_update_system(state, dt);
 
     render_system(state);
+
+    render_time = SDL_GetTicksNS () - rot_time - frame_start;
+    render_time_ms = render_time / 1e6;
+
+    if (frame_count++ % 10 == 0) {
+        printf("rot: %.3f\trender: %.3f\n", rot_time_ms, render_time_ms);
+    }
 
     return SDL_APP_CONTINUE;
 }

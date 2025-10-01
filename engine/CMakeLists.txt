@@ -1,3 +1,5 @@
+add_subdirectory(third_party)
+
 # Engine as static lib
 add_library(engine STATIC
     src/ecs/ecs.c
@@ -36,6 +38,8 @@ target_link_libraries(engine PRIVATE
     m
 )
 
+target_link_libraries(engine PUBLIC microui)
+
 # Shader compilation (if enabled)
 if(COMPILE_SHADERS AND GLSLANG_VALIDATOR)
     set(SHADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shaders)
@@ -47,6 +51,8 @@ if(COMPILE_SHADERS AND GLSLANG_VALIDATOR)
         basic_material.frag
         phong_material.vert
         phong_material.frag
+        ui_text.vert
+        ui_text.frag
     )
 
     foreach(SHADER ${SHADERS})
