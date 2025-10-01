@@ -15,9 +15,9 @@ MeshComponent create_circle_mesh(float radius, int segments, SDL_GPUDevice* devi
     int num_vertices = segments + 1;  // Center + ring
     int num_indices = segments * 3;   // One triangle per segment
 
-    // Check for uint16_t overflow (max 65535 verts); extend to uint32_t if needed later
+    // Check for Uint16 overflow (max 65535 verts); extend to Uint32 if needed later
     if (num_vertices > 65535) {
-        SDL_Log("Circle mesh too large for uint16_t indices");
+        SDL_Log("Circle mesh too large for Uint16 indices");
         return null_mesh;
     }
 
@@ -27,7 +27,7 @@ MeshComponent create_circle_mesh(float radius, int segments, SDL_GPUDevice* devi
         return null_mesh;
     }
 
-    uint16_t* indices = (uint16_t*)malloc(num_indices * sizeof(uint16_t));
+    Uint16* indices = (Uint16*)malloc(num_indices * sizeof(Uint16));
     if (!indices) {
         SDL_Log("Failed to allocate indices for circle mesh");
         free(vertices);
@@ -65,13 +65,13 @@ MeshComponent create_circle_mesh(float radius, int segments, SDL_GPUDevice* devi
     int index_idx = 0;
     for (int i = 0; i < segments; i++) {
         indices[index_idx++] = 0;                     // Center
-        indices[index_idx++] = (uint16_t)(i + 1);     // Current ring vertex
-        indices[index_idx++] = (uint16_t)((i + 1) % segments + 1);  // Next ring vertex (wrap around)
+        indices[index_idx++] = (Uint16)(i + 1);     // Current ring vertex
+        indices[index_idx++] = (Uint16)((i + 1) % segments + 1);  // Next ring vertex (wrap around)
     }
 
     // Upload to GPU
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 8 * sizeof(float);
+    Uint64 vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     free(vertices);
     if (vbo_failed) {
@@ -80,7 +80,7 @@ MeshComponent create_circle_mesh(float radius, int segments, SDL_GPUDevice* devi
     }
 
     SDL_GPUBuffer* ibo = NULL;
-    size_t indices_size = num_indices * sizeof(uint16_t);
+    Uint64 indices_size = num_indices * sizeof(Uint16);
     int ibo_failed = upload_indices(device, indices, indices_size, &ibo);
     free(indices);
     if (ibo_failed) {
@@ -90,9 +90,9 @@ MeshComponent create_circle_mesh(float radius, int segments, SDL_GPUDevice* devi
 
     MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
-        .num_vertices = (uint32_t)num_vertices,
+        .num_vertices = (Uint32)num_vertices,
         .index_buffer = ibo,
-        .num_indices = (uint32_t)num_indices,
+        .num_indices = (Uint32)num_indices,
         .index_size = SDL_GPU_INDEXELEMENTSIZE_16BIT
     };
 

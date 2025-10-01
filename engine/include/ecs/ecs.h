@@ -25,7 +25,7 @@ typedef struct {
     vec4 camera_pos;
 } UBOData;
 
-typedef uint32_t Entity;
+typedef Uint32 Entity;
 
 typedef struct {
     vec3 position;
@@ -35,9 +35,9 @@ typedef struct {
 
 typedef struct {
     SDL_GPUBuffer* vertex_buffer;
-    uint32_t num_vertices;
+    Uint32 num_vertices;
     SDL_GPUBuffer* index_buffer;
-    uint32_t num_indices;
+    Uint32 num_indices;
     SDL_GPUIndexElementSize index_size;
 } MeshComponent;
 

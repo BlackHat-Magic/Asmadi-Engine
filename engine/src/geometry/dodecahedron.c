@@ -63,7 +63,7 @@ MeshComponent create_dodecahedron_mesh(float radius, SDL_GPUDevice* device) {
     }
 
     int num_indices = 108;
-    uint16_t indices[108] = {
+    Uint16 indices[108] = {
         1, 8, 0, 0, 12, 13, 13, 1, 0,
         4, 9, 5, 5, 15, 14, 14, 4, 5,
         2, 10, 3, 3, 13, 12, 12, 2, 3,
@@ -82,13 +82,13 @@ MeshComponent create_dodecahedron_mesh(float radius, SDL_GPUDevice* device) {
     compute_vertex_normals(vertices, num_vertices, indices, num_indices, 8, 0, 3);
 
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 8 * sizeof(float);
+    Uint64 vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     free(vertices);
     if (vbo_failed) return (MeshComponent) {0};
 
     SDL_GPUBuffer* ibo = NULL;
-    size_t indices_size = num_indices * sizeof(uint16_t);
+    Uint64 indices_size = num_indices * sizeof(Uint16);
     int ibo_failed = upload_indices(device, indices, indices_size, &ibo);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);
@@ -97,9 +97,9 @@ MeshComponent create_dodecahedron_mesh(float radius, SDL_GPUDevice* device) {
     
     MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
-        .num_vertices = (uint32_t)num_vertices,
+        .num_vertices = (Uint32)num_vertices,
         .index_buffer = ibo,
-        .num_indices = (uint32_t)num_indices,
+        .num_indices = (Uint32)num_indices,
         .index_size = SDL_GPU_INDEXELEMENTSIZE_16BIT
     };
 

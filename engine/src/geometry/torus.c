@@ -30,7 +30,7 @@ MeshComponent create_torus_mesh(
 
     int num_vertices = num_tubular * num_radial;
     if (num_vertices > 65535) {
-        SDL_Log("Torus mesh too large for uint16_t indices");
+        SDL_Log("Torus mesh too large for Uint16 indices");
         return null_mesh;
     }
 
@@ -81,7 +81,7 @@ MeshComponent create_torus_mesh(
     int num_u_loops = tubular_segments;
     int num_r_loops = radial_segments;
     int num_indices = num_u_loops * num_r_loops * 6;
-    uint16_t* indices = (uint16_t*)malloc(num_indices * sizeof(uint16_t));
+    Uint16* indices = (Uint16*)malloc(num_indices * sizeof(Uint16));
     if (!indices) {
         SDL_Log("Failed to allocate indices for torus mesh");
         free(vertices);
@@ -98,10 +98,10 @@ MeshComponent create_torus_mesh(
         for (int ra = 0; ra < num_r_loops; ra++) {
             int ra1 = (ra + 1) % radial_segments;
 
-            uint16_t a = (uint16_t)(tu * num_radial + ra);
-            uint16_t b = (uint16_t)(tu1 * num_radial + ra);
-            uint16_t c = (uint16_t)(tu1 * num_radial + ra1);
-            uint16_t d = (uint16_t)(tu * num_radial + ra1);
+            Uint16 a = (Uint16)(tu * num_radial + ra);
+            Uint16 b = (Uint16)(tu1 * num_radial + ra);
+            Uint16 c = (Uint16)(tu1 * num_radial + ra1);
+            Uint16 d = (Uint16)(tu * num_radial + ra1);
 
             // Clockwise winding for front-face (matches SDL_GPU_FRONTFACE_CLOCKWISE)
             indices[index_idx++] = a;
@@ -116,7 +116,7 @@ MeshComponent create_torus_mesh(
 
     // Upload to GPU
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 8 * sizeof(float);
+    Uint64 vertices_size = num_vertices * 8 * sizeof(float);
     if (upload_vertices(device, vertices, vertices_size, &vbo)) {
         free(vertices);
         free(indices);
@@ -125,7 +125,7 @@ MeshComponent create_torus_mesh(
     free(vertices);
 
     SDL_GPUBuffer* ibo = NULL;
-    size_t indices_size = num_indices * sizeof(uint16_t);
+    Uint64 indices_size = num_indices * sizeof(Uint16);
     if (upload_indices(device, indices, indices_size, &ibo)) {
         SDL_ReleaseGPUBuffer(device, vbo);
         free(indices);
@@ -135,9 +135,9 @@ MeshComponent create_torus_mesh(
 
     MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
-        .num_vertices = (uint32_t)num_vertices,
+        .num_vertices = (Uint32)num_vertices,
         .index_buffer = ibo,
-        .num_indices = (uint32_t)num_indices,
+        .num_indices = (Uint32)num_indices,
         .index_size = SDL_GPU_INDEXELEMENTSIZE_16BIT
     };
 

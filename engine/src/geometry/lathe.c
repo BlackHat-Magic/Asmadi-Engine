@@ -23,9 +23,9 @@ MeshComponent create_lathe_mesh(
     int num_phi = phi_segments + 1;  // Rings closed
     int num_vertices = num_points * num_phi;
 
-    // Check for uint16_t overflow (max 65535 verts); extend to uint32_t if needed later
+    // Check for Uint16 overflow (max 65535 verts); extend to Uint32 if needed later
     if (num_vertices > 65535) {
-        SDL_Log("Lathe mesh too large for uint16_t indices");
+        SDL_Log("Lathe mesh too large for Uint16 indices");
         return null_mesh;
     }
 
@@ -67,7 +67,7 @@ MeshComponent create_lathe_mesh(
 
     // Generate indices (quads between rings, flipped winding for outward faces)
     int num_indices = (num_points - 1) * phi_segments * 6;
-    uint16_t* indices = (uint16_t*)malloc(num_indices * sizeof(uint16_t));
+    Uint16* indices = (Uint16*)malloc(num_indices * sizeof(Uint16));
     if (!indices) {
         SDL_Log("Failed to allocate indices for lathe mesh");
         free(vertices);
@@ -77,10 +77,10 @@ MeshComponent create_lathe_mesh(
     int index_idx = 0;
     for (int i = 0; i < num_points - 1; i++) {
         for (int j = 0; j < phi_segments; j++) {
-            uint16_t a = (uint16_t)(i * num_phi + j);
-            uint16_t b = (uint16_t)(i * num_phi + (j + 1) % phi_segments);  // Wrap phi
-            uint16_t c = (uint16_t)((i + 1) * num_phi + (j + 1) % phi_segments);
-            uint16_t d = (uint16_t)((i + 1) * num_phi + j);
+            Uint16 a = (Uint16)(i * num_phi + j);
+            Uint16 b = (Uint16)(i * num_phi + (j + 1) % phi_segments);  // Wrap phi
+            Uint16 c = (Uint16)((i + 1) * num_phi + (j + 1) % phi_segments);
+            Uint16 d = (Uint16)((i + 1) * num_phi + j);
 
             // Flipped winding: a -> c -> b and a -> d -> c (counterclockwise if original was clockwise)
             indices[index_idx++] = a;
@@ -98,7 +98,7 @@ MeshComponent create_lathe_mesh(
 
     // Upload to GPU
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 8 * sizeof(float);
+    Uint64 vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     free(vertices);
     if (vbo_failed) {
@@ -107,7 +107,7 @@ MeshComponent create_lathe_mesh(
     }
 
     SDL_GPUBuffer* ibo = NULL;
-    size_t indices_size = num_indices * sizeof(uint16_t);
+    Uint64 indices_size = num_indices * sizeof(Uint16);
     int ibo_failed = upload_indices(device, indices, indices_size, &ibo);
     free(indices);
     if (ibo_failed) {
@@ -117,9 +117,9 @@ MeshComponent create_lathe_mesh(
 
     MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
-        .num_vertices = (uint32_t)num_vertices,
+        .num_vertices = (Uint32)num_vertices,
         .index_buffer = ibo,
-        .num_indices = (uint32_t)num_indices,
+        .num_indices = (Uint32)num_indices,
         .index_size = SDL_GPU_INDEXELEMENTSIZE_16BIT
     };
 

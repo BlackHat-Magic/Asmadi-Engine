@@ -1,7 +1,5 @@
 #include "geometry/box.h"
 
-#include <stdlib.h>
-
 #include "ecs/ecs.h"
 #include "geometry/g_common.h"
 
@@ -53,7 +51,7 @@ MeshComponent create_box_mesh(
     };
 
     // 36 indices: 6 per face (2 triangles each), clockwise winding
-    uint16_t indices[] = {
+    Uint16 indices[] = {
         // Front
         0, 2, 1, 2, 0, 3,
         // Back (unchanged)
@@ -71,12 +69,12 @@ MeshComponent create_box_mesh(
     compute_vertex_normals(vertices, 24, indices, 36, 8, 0, 3);
 
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = sizeof(vertices);
+    Uint64 vertices_size = sizeof(vertices);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     if (vbo_failed) return (MeshComponent){0};  // logging handled in upload_vertices()
 
     SDL_GPUBuffer* ibo = NULL;
-    size_t indices_size = sizeof(indices);
+    Uint64 indices_size = sizeof(indices);
     int ibo_failed     = upload_indices(device, indices, indices_size, &ibo);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);

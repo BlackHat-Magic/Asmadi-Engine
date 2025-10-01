@@ -8,15 +8,15 @@
 #include <math.h>
 #include "math/matrix.h"
 
-static uint32_t next_entity_id = 0;
+static Uint32 next_entity_id = 0;
 
 typedef struct {
     void* data;
-    uint32_t* entity_to_index;
-    uint32_t* index_to_entity;
-    uint32_t count;
-    uint32_t data_capacity;
-    uint32_t entity_capacity;
+    Uint32* entity_to_index;
+    Uint32* index_to_entity;
+    Uint32 count;
+    Uint32 data_capacity;
+    Uint32 entity_capacity;
 } GenericPool;
 
 static GenericPool transform_pool = {0};
@@ -29,15 +29,15 @@ static GenericPool ambient_light_pool = {0};
 static GenericPool point_light_pool = {0};
 
 // Helper to grow entity_to_index (sparse map)
-static void grow_entity_map(GenericPool* pool, uint32_t min_entity) {
-    uint32_t new_cap = pool->entity_capacity ? pool->entity_capacity * 2 : 1024;
+static void grow_entity_map(GenericPool* pool, Uint32 min_entity) {
+    Uint32 new_cap = pool->entity_capacity ? pool->entity_capacity * 2 : 1024;
     if (new_cap <= min_entity) new_cap = min_entity + 1;
-    uint32_t* new_map = (uint32_t*)realloc(pool->entity_to_index, new_cap * sizeof(uint32_t));
+    Uint32* new_map = (Uint32*)realloc(pool->entity_to_index, new_cap * sizeof(Uint32));
     if (!new_map) {
         SDL_Log("Failed to realloc entity map");
         return;
     }
-    for (uint32_t i = pool->entity_capacity; i < new_cap; i++) {
+    for (Uint32 i = pool->entity_capacity; i < new_cap; i++) {
         new_map[i] = ~0u;
     }
     pool->entity_to_index = new_map;
@@ -45,10 +45,10 @@ static void grow_entity_map(GenericPool* pool, uint32_t min_entity) {
 }
 
 // Helper to grow data and index_to_entity (dense)
-static void grow_data(GenericPool* pool, size_t component_size) {
-    uint32_t new_cap = pool->data_capacity ? pool->data_capacity * 2 : 64;
+static void grow_data(GenericPool* pool, Uint64 component_size) {
+    Uint32 new_cap = pool->data_capacity ? pool->data_capacity * 2 : 64;
     void* new_data = realloc(pool->data, new_cap * component_size);
-    uint32_t* new_idx_ent = (uint32_t*)realloc(pool->index_to_entity, new_cap * sizeof(uint32_t));
+    Uint32* new_idx_ent = (Uint32*)realloc(pool->index_to_entity, new_cap * sizeof(Uint32));
     if (!new_data || !new_idx_ent) {
         SDL_Log("Failed to realloc data pool");
         return;
@@ -64,26 +64,26 @@ static bool pool_has(const GenericPool* pool, Entity e) {
 }
 
 // Generic remove (swap and pop)
-static void pool_remove(GenericPool* pool, Entity e, size_t component_size) {
+static void pool_remove(GenericPool* pool, Entity e, Uint64 component_size) {
     if (!pool_has(pool, e)) return;
-    uint32_t idx = pool->entity_to_index[e];
-    uint32_t last = --pool->count;
+    Uint32 idx = pool->entity_to_index[e];
+    Uint32 last = --pool->count;
     // Copy last to idx (if data exists)
     if (pool->data) {
         memcpy((char*)pool->data + idx * component_size, (char*)pool->data + last * component_size, component_size);
     }
-    uint32_t swapped_e = pool->index_to_entity[last];
+    Uint32 swapped_e = pool->index_to_entity[last];
     pool->index_to_entity[idx] = swapped_e;
     pool->entity_to_index[swapped_e] = idx;
     pool->entity_to_index[e] = ~0u;
 }
 
 // Generic add/overwrite (with data copy)
-static void pool_add(GenericPool* pool, Entity e, const void* comp_data, size_t component_size) {
+static void pool_add(GenericPool* pool, Entity e, const void* comp_data, Uint64 component_size) {
     if (e >= pool->entity_capacity) {
         grow_entity_map(pool, e);
     }
-    uint32_t idx;
+    Uint32 idx;
     if (pool->entity_to_index[e] != ~0u) {
         // Overwrite
         idx = pool->entity_to_index[e];
@@ -105,9 +105,9 @@ static void pool_add(GenericPool* pool, Entity e, const void* comp_data, size_t 
 }
 
 // Generic get
-static void* pool_get(const GenericPool* pool, Entity e, size_t component_size) {
+static void* pool_get(const GenericPool* pool, Entity e, Uint64 component_size) {
     if (!pool_has(pool, e)) return NULL;
-    uint32_t idx = pool->entity_to_index[e];
+    Uint32 idx = pool->entity_to_index[e];
     return (char*)pool->data + idx * component_size;
 }
 
@@ -253,7 +253,7 @@ void remove_point_light(Entity e) {
 }
 
 void fps_controller_event_system(AppState* state, SDL_Event* event) {
-    for (uint32_t i = 0; i < fps_controller_pool.count; i++) {
+    for (Uint32 i = 0; i < fps_controller_pool.count; i++) {
         Entity e = fps_controller_pool.index_to_entity[i];
         FpsCameraControllerComponent* ctrl = &((FpsCameraControllerComponent*)fps_controller_pool.data)[i];
         TransformComponent* trans = get_transform(e);
@@ -291,7 +291,7 @@ void fps_controller_event_system(AppState* state, SDL_Event* event) {
 }
 
 void fps_controller_update_system(AppState* state, float dt) {
-    for (uint32_t i = 0; i < fps_controller_pool.count; i++) {
+    for (Uint32 i = 0; i < fps_controller_pool.count; i++) {
         Entity e = fps_controller_pool.index_to_entity[i];
         FpsCameraControllerComponent* ctrl = &((FpsCameraControllerComponent*)fps_controller_pool.data)[i];
         TransformComponent* trans = get_transform(e);
@@ -390,7 +390,7 @@ SDL_AppResult render_system(AppState* state) {
 
     int ambient_idx = 0;
     vec4 ambient_colors[MAX_LIGHTS] = {0};
-    for (uint32_t i = 0; i < ambient_light_pool.count; i++) {
+    for (Uint32 i = 0; i < ambient_light_pool.count; i++) {
         if (ambient_idx >= MAX_LIGHTS) break;
         AmbientLightComponent light = ((AmbientLightComponent*)ambient_light_pool.data)[i];
         if (light.w <= 0.0f) continue;
@@ -400,7 +400,7 @@ SDL_AppResult render_system(AppState* state) {
     int point_idx = 0;
     vec4 light_positions[MAX_LIGHTS] = {0};
     vec4 light_colors[MAX_LIGHTS] = {0};
-    for (uint32_t i = 0; i < point_light_pool.count; i++) {
+    for (Uint32 i = 0; i < point_light_pool.count; i++) {
         if (point_idx >= MAX_LIGHTS) break;
         Entity e = point_light_pool.index_to_entity[i];
         PointLightComponent light = ((PointLightComponent*)point_light_pool.data)[i];
@@ -412,7 +412,7 @@ SDL_AppResult render_system(AppState* state) {
         point_idx++;
     }
 
-    for (uint32_t i = 0; i < mesh_pool.count; i++) {
+    for (Uint32 i = 0; i < mesh_pool.count; i++) {
         Entity e = mesh_pool.index_to_entity[i];
         MeshComponent* mesh = &((MeshComponent*)mesh_pool.data)[i];
         if (!mesh->vertex_buffer) continue;
@@ -473,7 +473,7 @@ SDL_AppResult render_system(AppState* state) {
 
 void free_pools(AppState* state) {
     // Destroy all entities to release resources (e.g., GPU buffers)
-    for (uint32_t i = 0; i < next_entity_id; i++) {
+    for (Uint32 i = 0; i < next_entity_id; i++) {
         destroy_entity(state, i);
     }
 

@@ -12,10 +12,10 @@ MeshComponent create_plane_mesh(float width, float height, int width_segments, i
     int num_vertices = (width_segments + 1) * (height_segments + 1);
     int num_indices = width_segments * height_segments * 6;
 
-    // Check for uint16_t overflow (max 65535 verts); fallback to uint32_t if needed
-    // For now, assume small segments; add uint32_t support later if required
+    // Check for Uint16 overflow (max 65535 verts); fallback to Uint32 if needed
+    // For now, assume small segments; add Uint32 support later if required
     if (num_vertices > 65535) {
-        SDL_Log("Plane mesh too large for uint16_t indices");
+        SDL_Log("Plane mesh too large for Uint16 indices");
         return null_mesh;
     }
 
@@ -25,7 +25,7 @@ MeshComponent create_plane_mesh(float width, float height, int width_segments, i
         return null_mesh;
     }
 
-    uint16_t* indices = (uint16_t*)malloc(num_indices * sizeof(uint16_t));
+    Uint16* indices = (Uint16*)malloc(num_indices * sizeof(Uint16));
     if (!indices) {
         SDL_Log("Failed to allocate indices for plane mesh");
         free(vertices);
@@ -58,10 +58,10 @@ MeshComponent create_plane_mesh(float width, float height, int width_segments, i
     int index_idx = 0;
     for (int iy = 0; iy < height_segments; iy++) {
         for (int ix = 0; ix < width_segments; ix++) {
-            uint16_t a = (uint16_t)(iy * (width_segments + 1) + ix);
-            uint16_t b = (uint16_t)(iy * (width_segments + 1) + ix + 1);
-            uint16_t c = (uint16_t)((iy + 1) * (width_segments + 1) + ix + 1);
-            uint16_t d = (uint16_t)((iy + 1) * (width_segments + 1) + ix);
+            Uint16 a = (Uint16)(iy * (width_segments + 1) + ix);
+            Uint16 b = (Uint16)(iy * (width_segments + 1) + ix + 1);
+            Uint16 c = (Uint16)((iy + 1) * (width_segments + 1) + ix + 1);
+            Uint16 d = (Uint16)((iy + 1) * (width_segments + 1) + ix);
 
             // Triangle 1: a -> b -> c (clockwise)
             indices[index_idx++] = a;
@@ -76,7 +76,7 @@ MeshComponent create_plane_mesh(float width, float height, int width_segments, i
     }
 
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 8 * sizeof(float);
+    Uint64 vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     free(vertices);
     if (vbo_failed) {
@@ -85,7 +85,7 @@ MeshComponent create_plane_mesh(float width, float height, int width_segments, i
     }
 
     SDL_GPUBuffer* ibo = NULL;
-    size_t indices_size = num_indices * sizeof(uint16_t);
+    Uint64 indices_size = num_indices * sizeof(Uint16);
     int ibo_failed = upload_indices(device, indices, indices_size, &ibo);
     free(indices);
     if (ibo_failed) {
@@ -94,9 +94,9 @@ MeshComponent create_plane_mesh(float width, float height, int width_segments, i
 
     MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
-        .num_vertices = (uint32_t)num_vertices,
+        .num_vertices = (Uint32)num_vertices,
         .index_buffer = ibo,
-        .num_indices = (uint32_t)num_indices,
+        .num_indices = (Uint32)num_indices,
         .index_size = SDL_GPU_INDEXELEMENTSIZE_16BIT
     };
 

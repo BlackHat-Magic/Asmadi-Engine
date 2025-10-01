@@ -49,7 +49,7 @@ MeshComponent create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
         vertices[vertex_idx++] = v;
     }
     
-    uint16_t indices[] = {
+    Uint16 indices[] = {
         11, 5, 0,
         5, 1, 0,
         1, 7, 0,
@@ -75,7 +75,7 @@ MeshComponent create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
 
     // Note: The indices in the original code seem incomplete or erroneous (only 60 indices but listed less); assuming standard icosahedron indices
     // Standard icosahedron has 20 faces, 60 indices. Here using a corrected list:
-    uint16_t standard_indices[60] = {
+    Uint16 standard_indices[60] = {
         0, 5, 1,
         0, 1, 7,
         0, 7, 10,
@@ -102,13 +102,13 @@ MeshComponent create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
     compute_vertex_normals(vertices, num_vertices, standard_indices, 60, 8, 0, 3);
 
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 8 * sizeof(float);
+    Uint64 vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     free(vertices);
     if (vbo_failed) return null_mesh;
 
     SDL_GPUBuffer* ibo = NULL;
-    size_t indices_size = 60 * sizeof(uint16_t);
+    Uint64 indices_size = 60 * sizeof(Uint16);
     int ibo_failed = upload_indices(device, standard_indices, indices_size, &ibo);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);
@@ -117,7 +117,7 @@ MeshComponent create_icosahedron_mesh(float radius, SDL_GPUDevice* device) {
 
     MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
-        .num_vertices = (uint32_t)num_vertices,
+        .num_vertices = (Uint32)num_vertices,
         .index_buffer = ibo,
         .num_indices = 60,
         .index_size = SDL_GPU_INDEXELEMENTSIZE_16BIT

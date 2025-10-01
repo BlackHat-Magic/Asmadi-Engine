@@ -20,7 +20,7 @@ SDL_GPUShader* load_shader(
     const char* entrypoint     = "main";
     SDL_GPUShaderFormat format = SDL_GPU_SHADERFORMAT_SPIRV;
 
-    size_t code_size;
+    Uint64 code_size;
     void* code = SDL_LoadFile(filename, &code_size);
     if (code == NULL) {
         SDL_Log("Could't read file %s: %s", filename, SDL_GetError());

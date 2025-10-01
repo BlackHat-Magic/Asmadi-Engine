@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL.h>
 
-typedef uint32_t Entity;
+typedef Uint32 Entity;
 
 typedef struct {
     SDL_Window* window;

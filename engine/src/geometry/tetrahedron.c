@@ -35,7 +35,7 @@ MeshComponent create_tetrahedron_mesh(float radius, SDL_GPUDevice* device) {
 
     // 12 indices (4 triangles, clockwise)
     const int num_indices = 12;
-    uint16_t indices[] = {
+    Uint16 indices[] = {
         0, 1, 2,  // Face 0
         0, 3, 1,  // Face 1
         0, 2, 3,  // Face 2
@@ -46,12 +46,12 @@ MeshComponent create_tetrahedron_mesh(float radius, SDL_GPUDevice* device) {
     compute_vertex_normals(vertices, num_vertices, indices, num_indices, 8, 0, 3);
 
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = num_vertices * 8 * sizeof(float);
+    Uint64 vertices_size = num_vertices * 8 * sizeof(float);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     if (vbo_failed) return null_mesh;
 
     SDL_GPUBuffer* ibo = NULL;
-    size_t indices_size = num_indices * sizeof(uint16_t);
+    Uint64 indices_size = num_indices * sizeof(Uint16);
     int ibo_failed = upload_indices(device, indices, indices_size, &ibo);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);
@@ -60,9 +60,9 @@ MeshComponent create_tetrahedron_mesh(float radius, SDL_GPUDevice* device) {
 
     MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
-        .num_vertices = (uint32_t)num_vertices,
+        .num_vertices = (Uint32)num_vertices,
         .index_buffer = ibo,
-        .num_indices = (uint32_t)num_indices,
+        .num_indices = (Uint32)num_indices,
         .index_size = SDL_GPU_INDEXELEMENTSIZE_16BIT
     };
 

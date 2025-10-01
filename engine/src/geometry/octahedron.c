@@ -37,7 +37,7 @@ MeshComponent create_octahedron_mesh(float radius, SDL_GPUDevice* device) {
         vertices[i * 8 + 7] = v;
     }
 
-    uint16_t indices[] = {
+    Uint16 indices[] = {
         0, 2, 1,  // Clockwise for outwards normal
         0, 3, 2,
         0, 4, 3,
@@ -49,15 +49,15 @@ MeshComponent create_octahedron_mesh(float radius, SDL_GPUDevice* device) {
     };
 
     // Compute normals
-    compute_vertex_normals(vertices, num_vertices, indices, sizeof(indices) / sizeof(uint16_t), 8, 0, 3);
+    compute_vertex_normals(vertices, num_vertices, indices, sizeof(indices) / sizeof(Uint16), 8, 0, 3);
 
     SDL_GPUBuffer* vbo = NULL;
-    size_t vertices_size = sizeof(vertices);
+    Uint64 vertices_size = sizeof(vertices);
     int vbo_failed = upload_vertices(device, vertices, vertices_size, &vbo);
     if (vbo_failed) return null_mesh;
 
     SDL_GPUBuffer* ibo = NULL;
-    size_t indices_size = sizeof(indices);
+    Uint64 indices_size = sizeof(indices);
     int ibo_failed = upload_indices(device, indices, indices_size, &ibo);
     if (ibo_failed) {
         SDL_ReleaseGPUBuffer(device, vbo);
@@ -66,9 +66,9 @@ MeshComponent create_octahedron_mesh(float radius, SDL_GPUDevice* device) {
 
     MeshComponent out_mesh = (MeshComponent){
         .vertex_buffer = vbo,
-        .num_vertices = (uint32_t)num_vertices,
+        .num_vertices = (Uint32)num_vertices,
         .index_buffer = ibo,
-        .num_indices = sizeof(indices) / sizeof(uint16_t),
+        .num_indices = sizeof(indices) / sizeof(Uint16),
         .index_size = SDL_GPU_INDEXELEMENTSIZE_16BIT
     };
 
