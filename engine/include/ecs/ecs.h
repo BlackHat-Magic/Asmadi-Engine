@@ -2,8 +2,8 @@
 
 #include <SDL3/SDL.h>
 
-#include "math/matrix.h"
 #include "core/appstate.h"
+#include "math/matrix.h"
 
 // TODO: More robust max lights
 #define MAX_LIGHTS 64
@@ -19,8 +19,8 @@ typedef struct {
     float model[16];
     float view[16];
     float proj[16];
-    vec4 ambient_color[MAX_LIGHTS]; // RGB + Strength
-    vec4 point_light_pos[MAX_LIGHTS]; // xyz + padding (16-byte aligned)
+    vec4 ambient_color[MAX_LIGHTS];     // RGB + Strength
+    vec4 point_light_pos[MAX_LIGHTS];   // xyz + padding (16-byte aligned)
     vec4 point_light_color[MAX_LIGHTS]; // RGB + Strength
     vec4 camera_pos;
 } UBOData;
@@ -68,59 +68,59 @@ typedef vec4 AmbientLightComponent;
 typedef vec4 PointLightComponent; // position is another component
 
 // ECS API
-Entity create_entity(void);
-void destroy_entity(AppState* state, Entity e);
+Entity create_entity (void);
+void destroy_entity (AppState* state, Entity e);
 
 // Transforms
-void add_transform(Entity e, vec3 pos, vec3 rot, vec3 scale);
-TransformComponent* get_transform(Entity e);
-bool has_transform(Entity e);
-void remove_transform(Entity e);
+void add_transform (Entity e, vec3 pos, vec3 rot, vec3 scale);
+TransformComponent* get_transform (Entity e);
+bool has_transform (Entity e);
+void remove_transform (Entity e);
 
 // Meshes
-void add_mesh(Entity e, MeshComponent mesh);
-MeshComponent* get_mesh(Entity e);
-bool has_mesh(Entity e);
-void remove_mesh(AppState* state, Entity e); // state for device release
+void add_mesh (Entity e, MeshComponent mesh);
+MeshComponent* get_mesh (Entity e);
+bool has_mesh (Entity e);
+void remove_mesh (AppState* state, Entity e); // state for device release
 
 // Materials
-void add_material(Entity e, MaterialComponent material);
-MaterialComponent* get_material(Entity e);
-bool has_material(Entity e);
-void remove_material(AppState* state, Entity e); // state for device release
+void add_material (Entity e, MaterialComponent material);
+MaterialComponent* get_material (Entity e);
+bool has_material (Entity e);
+void remove_material (AppState* state, Entity e); // state for device release
 
 // Cameras
-void add_camera(Entity e, float fov, float near_clip, float far_clip);
-CameraComponent* get_camera(Entity e);
-bool has_camera(Entity e);
-void remove_camera(Entity e);
+void add_camera (Entity e, float fov, float near_clip, float far_clip);
+CameraComponent* get_camera (Entity e);
+bool has_camera (Entity e);
+void remove_camera (Entity e);
 
 // FPS Controllers
-void add_fps_controller(Entity e, float sense, float speed);
-FpsCameraControllerComponent* get_fps_controller(Entity e);
-bool has_fps_controller(Entity e);
-void remove_fps_controller(Entity e);
+void add_fps_controller (Entity e, float sense, float speed);
+FpsCameraControllerComponent* get_fps_controller (Entity e);
+bool has_fps_controller (Entity e);
+void remove_fps_controller (Entity e);
 
 // Billboards (flag)
-void add_billboard(Entity e);
-bool has_billboard(Entity e);
-void remove_billboard(Entity e);
+void add_billboard (Entity e);
+bool has_billboard (Entity e);
+void remove_billboard (Entity e);
 
 // Ambient Lights
-void add_ambient_light(Entity e, vec3 rgb, float brightness);
-AmbientLightComponent* get_ambient_light(Entity e);
-bool has_ambient_light(Entity e);
-void remove_ambient_light(Entity e);
+void add_ambient_light (Entity e, vec3 rgb, float brightness);
+AmbientLightComponent* get_ambient_light (Entity e);
+bool has_ambient_light (Entity e);
+void remove_ambient_light (Entity e);
 
 // Point Lights
-void add_point_light(Entity e, vec3 rgb, float brightness);
-PointLightComponent* get_point_light(Entity e);
-bool has_point_light(Entity e);
-void remove_point_light(Entity e);
+void add_point_light (Entity e, vec3 rgb, float brightness);
+PointLightComponent* get_point_light (Entity e);
+bool has_point_light (Entity e);
+void remove_point_light (Entity e);
 
 // Systems
-void fps_controller_event_system(AppState* state, SDL_Event* event);
-void fps_controller_update_system(AppState* state, float dt);
-SDL_AppResult render_system(AppState* state);
+void fps_controller_event_system (AppState* state, SDL_Event* event);
+void fps_controller_update_system (AppState* state, float dt);
+SDL_AppResult render_system (AppState* state);
 
-void free_pools(AppState* state);
+void free_pools (AppState* state);

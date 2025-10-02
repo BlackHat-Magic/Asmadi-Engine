@@ -1,6 +1,7 @@
 #include <SDL3/SDL.h>
 
-#include "math/matrix.h"
 #include "ecs/ecs.h"
+#include "math/matrix.h"
 
-MaterialComponent create_basic_material (vec3 color, MaterialSide side, AppState* state);
+MaterialComponent
+create_basic_material (vec3 color, MaterialSide side, AppState* state);

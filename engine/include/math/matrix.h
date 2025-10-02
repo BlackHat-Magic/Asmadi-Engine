@@ -37,33 +37,43 @@ vec4 vec4_scale (vec4 v, float s);
 vec4 vec4_normalize (vec4 v);
 float vec4_dot (vec4 a, vec4 b);
 
-vec4 quat_from_euler(vec3 euler);
-vec3 euler_from_quat(vec4 q);
-vec4 quat_multiply(vec4 a, vec4 b); // compose rotations
-vec4 quat_conjugate(vec4 q);
+vec4 quat_from_euler (vec3 euler);
+vec3 euler_from_quat (vec4 q);
+vec4 quat_multiply (vec4 a, vec4 b); // compose rotations
+vec4 quat_conjugate (vec4 q);
 vec4 quat_normalize (vec4 q);
-vec3 quat_rotate(vec4 q, vec3 v); // rotate a vector with a quaternion
-vec4 quat_from_axis_angle(vec3 axis, float angle);
-vec3 vec3_rotate(vec4 q, vec3 v);
+vec3 quat_rotate (vec4 q, vec3 v); // rotate a vector with a quaternion
+vec4 quat_from_axis_angle (vec3 axis, float angle);
+vec3 vec3_rotate (vec4 q, vec3 v);
 
-void mat4_identity(mat4 m);
-void mat4_translate(mat4 m, vec3 v);
-void mat4_rotate_x(mat4 m, float angle_rad);
-void mat4_rotate_y(mat4 m, float angle_rad);
-void mat4_rotate_z(mat4 m, float angle_rad);
-void mat4_rotate_quat(mat4 m, vec4 q);
-void mat4_scale(mat4 m, vec3 v);
-void mat4_multiply(mat4 out, mat4 a, mat4 b);
-void mat4_perspective(mat4 m, float fov_rad, float aspect, float near, float far);
-void mat4_look_at(mat4 m, vec3 eye, vec3 center, vec3 up);
+void mat4_identity (mat4 m);
+void mat4_translate (mat4 m, vec3 v);
+void mat4_rotate_x (mat4 m, float angle_rad);
+void mat4_rotate_y (mat4 m, float angle_rad);
+void mat4_rotate_z (mat4 m, float angle_rad);
+void mat4_rotate_quat (mat4 m, vec4 q);
+void mat4_scale (mat4 m, vec3 v);
+void mat4_multiply (mat4 out, mat4 a, mat4 b);
+void mat4_perspective (
+    mat4 m,
+    float fov_rad,
+    float aspect,
+    float near,
+    float far
+);
+void mat4_look_at (mat4 m, vec3 eye, vec3 center, vec3 up);
 
 // TODO: move these to a separate file
-void random_seed(unsigned int seed);
-float random_float(void);  // Returns [0, 1)
-float random_float_range(float min, float max);  // Returns [min, max)
-int random_int(int min, int max);  // Returns [min, max] inclusive
-bool random_bool(void);  // Returns true/false with 50% probability
-vec2 random_vec2(void);  // Each component [0, 1)
-vec3 random_vec3(void);  // Each component [0, 1)
-vec3 random_in_unit_sphere(void);  // Random point inside unit sphere (useful for sampling)
-vec3 random_unit_vector(void);  // Random normalized direction (on unit sphere surface)
+void random_seed (unsigned int seed);
+float random_float (void);                       // Returns [0, 1)
+float random_float_range (float min, float max); // Returns [min, max)
+int random_int (int min, int max);               // Returns [min, max] inclusive
+bool random_bool (void); // Returns true/false with 50% probability
+vec2 random_vec2 (void); // Each component [0, 1)
+vec3 random_vec3 (void); // Each component [0, 1)
+vec3 random_in_unit_sphere (
+    void
+); // Random point inside unit sphere (useful for sampling)
+vec3 random_unit_vector (
+    void
+); // Random normalized direction (on unit sphere surface)

@@ -2,4 +2,4 @@
 
 #include "ecs/ecs.h"
 
-MeshComponent create_icosahedron_mesh(float radius, SDL_GPUDevice* device);
+MeshComponent create_icosahedron_mesh (float radius, SDL_GPUDevice* device);
