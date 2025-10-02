@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Find dependencies (shared)
 find_package(SDL3 REQUIRED)
 find_package(SDL3_image REQUIRED)
+find_package(SDL3_ttf REQUIRED)
 
 # Shader compilation option (shared, but executed in engine)
 option(COMPILE_SHADERS "Compile shaders with glslangValidator" ON)

@@ -7,6 +7,7 @@
 #include "ecs/ecs.h"
 #include <math.h>
 #include "math/matrix.h"
+#include "microui.h"
 
 static Uint32 next_entity_id = 0;
 
@@ -465,6 +466,43 @@ SDL_AppResult render_system(AppState* state) {
             SDL_DrawGPUPrimitives(pass, mesh->num_vertices, 1, 0, 0);
         }
     }
+
+    // render UI
+    if (state->debugger && state->ui) {
+        // Ensure viewport covers whole target (you already set viewport earlier)
+        ui_begin(state->ui, (int)state->width, (int)state->height);
+      
+        mu_Command* cmd;
+        while (mu_next_command(state->ui->m_context, &cmd)) {
+          switch (cmd->type) {
+            case MU_COMMAND_CLIP: {
+              SDL_Rect clip = {cmd->clip.rect.x, cmd->clip.rect.y,
+                               cmd->clip.rect.w, cmd->clip.rect.h};
+              ui_set_clip(state->ui, clip);
+            } break;
+            case MU_COMMAND_RECT: {
+              SDL_FRect r = {(float)cmd->rect.rect.x, (float)cmd->rect.rect.y,
+                             (float)cmd->rect.rect.w, (float)cmd->rect.rect.h};
+              SDL_Color col = {cmd->rect.color.r, cmd->rect.color.g,
+                               cmd->rect.color.b, cmd->rect.color.a};
+              ui_add_rect(state->ui, r, col);
+            } break;
+            case MU_COMMAND_TEXT: {
+              SDL_Color col = {cmd->text.color.r, cmd->text.color.g,
+                               cmd->text.color.b, cmd->text.color.a};
+              ui_add_text_naive(state->device, pass, state->ui,
+                                cmd->text.pos.x, cmd->text.pos.y,
+                                cmd->text.str, col);
+            } break;
+            case MU_COMMAND_ICON:
+              // Optional: add icon rendering later
+              break;
+          }
+        }
+      
+        // Draw batched rectangles
+        ui_draw(state->ui, state->device, pass, state->sampler, state->swapchain_format);
+      }
 
     SDL_EndGPURenderPass(pass);
     SDL_SubmitGPUCommandBuffer(cmd);

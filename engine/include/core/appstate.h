@@ -1,6 +1,11 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
+
+#include <microui.h>
+
+#include <ui/ui.h>
 
 typedef Uint32 Entity;
 
@@ -23,6 +28,10 @@ typedef struct {
     Uint64 last_time;
     Uint64 current_time;
     bool quit;
+
+    // is the debugger enabled?
+    bool debugger;
+    UIRenderer* ui;
 
     Entity camera_entity;
 } AppState;

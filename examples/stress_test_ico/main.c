@@ -1,4 +1,3 @@
-#include "math/matrix.h"
 #define SDL_MAIN_USE_CALLBACKS 1
 
 #include <stdlib.h>
@@ -6,14 +5,19 @@
 #include <stdio.h>
 
 #include <SDL3/SDL_main.h>
+#include <SDL3_ttf/SDL_ttf.h>
 
+#include <microui.h>
+
+#include <ui/ui.h>
 #include <ecs/ecs.h>
+#include <math/matrix.h>
 #include <geometry/icosahedron.h>
 #include <material/m_common.h>
 #include <material/phong_material.h>
 
-#define STARTING_WIDTH 640
-#define STARTING_HEIGHT 480
+#define STARTING_WIDTH 1280
+#define STARTING_HEIGHT 720
 #define STARTING_FOV 70.0
 #define MOUSE_SENSE 1.0f / 100.0f
 #define MOVEMENT_SPEED 3.0f
@@ -27,12 +31,30 @@ double rot_time_ms;
 double render_time_ms;
 Uint64 frame_count;
 
+UIRenderer* ui_ctx;
+
+void test_window (mu_Context* context) {
+    if (!mu_begin_window (context, "Debug Info", mu_rect (40, 40, 300, 450))) return;
+
+    char buffer[64];
+    mu_layout_row (context, 2, (int[]) {54, -1}, 0);
+    mu_label (context, "Rotation:");
+    sprintf (buffer, "%.3f", rot_time_ms); mu_label (context, buffer);
+    mu_label (context, "Render:");
+    sprintf (buffer, "%.3f", render_time_ms); mu_label(context, buffer);
+
+    mu_end_window (context);
+}
+
 SDL_AppResult SDL_AppEvent (void* appstate, SDL_Event* event) {
     AppState* state = (AppState*)appstate;
 
     Entity cam = state->camera_entity;
     if (cam == (Entity)-1 || !has_transform(cam)) return SDL_APP_CONTINUE;
     TransformComponent* cam_trans = get_transform(cam);
+
+    // ui handle input
+    ui_handleInput(state->ui->m_context, event);
 
     switch (event->type) {
         case SDL_EVENT_QUIT:
@@ -49,13 +71,14 @@ SDL_AppResult SDL_AppEvent (void* appstate, SDL_Event* event) {
 }
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
-    SDL_SetAppMetadata("Asmadi Engine Box Geometry", "0.1.0", "xyz.lukeh.Asmadi-Engine");
+    SDL_SetAppMetadata("Asmadi Engine Ico Stress Test", "0.1.0", "xyz.lukeh.Asmadi-Engine");
 
     // create appstate
     AppState* state = (AppState*)calloc(1, sizeof(AppState));
     state->width    = STARTING_WIDTH;
     state->height   = STARTING_HEIGHT;
     state->camera_entity      = (Entity)-1;
+    ui_ctx = (UIRenderer*) calloc (1, sizeof (UIRenderer));
 
     // initialize SDL
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -128,6 +151,22 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
         SDL_Log("Failed to create sampler: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+
+    // initialize text engine
+    if (!TTF_Init ()) {
+        SDL_Log ("Couldn't initialize SDL_ttf: %s\n", SDL_GetError ());
+        return SDL_APP_FAILURE;
+    }
+    ui_ctx->font = TTF_OpenFont ("assets/NotoSans-Regular.ttf", 12.0f);
+    if (ui_ctx->font == NULL) {
+        SDL_Log ("Failed to initialize font: %s\n", SDL_GetError ());
+        return SDL_APP_FAILURE;
+    }
+
+    // microui context
+    state->ui = ui_init (state->device, state->swapchain_format, "assets/NotoSans-Regular.ttf", 12);
+    if (!state->ui) return SDL_APP_FAILURE;
+    state->ui->ui_sampler = state->sampler; // reduce, reuse, recycle :)
 
     // spawn 8k icosahedrons
     // we want to be able to handle way more (e.g., ~1000000)
@@ -238,20 +277,22 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     // camera forward vector
     fps_controller_update_system(state, dt);
 
+    // layout
+    mu_begin (state->ui->m_context);
+    test_window (state->ui->m_context);
+    mu_end (state->ui->m_context);
+
     render_system(state);
 
     render_time = SDL_GetTicksNS () - rot_time - frame_start;
     render_time_ms = render_time / 1e6;
-
-    if (frame_count++ % 10 == 0) {
-        printf("rot: %.3f\trender: %.3f\n", rot_time_ms, render_time_ms);
-    }
 
     return SDL_APP_CONTINUE;
 }
 
 void SDL_AppQuit(void* appstate, SDL_AppResult result) {
     AppState* state = (AppState*)appstate;
+    if (state->ui) ui_shutdown (state->device, state->ui);
     free_pools(state);
     if (state->white_texture) {
         SDL_ReleaseGPUTexture(state->device, state->white_texture);
