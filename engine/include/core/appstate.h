@@ -24,16 +24,5 @@ typedef struct {
     Uint64 current_time;
     bool quit;
 
-    SDL_FRect* rects;
-    SDL_FColor* rect_colors;
-    Uint32 rect_count;
-    SDL_GPUBuffer* rect_vbo;
-    Uint32 rect_vbo_size;
-    SDL_GPUBuffer* rect_ibo;
-    Uint32 rect_ibo_size;
-    SDL_GPUGraphicsPipeline* rect_pipeline;
-    SDL_GPUShader* rect_vshader;
-    SDL_GPUShader* rect_fshader;
-
     Entity camera_entity;
 } AppState;

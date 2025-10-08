@@ -61,6 +61,20 @@ typedef struct {
     float move_speed;
 } FpsCameraControllerComponent;
 
+typedef struct {
+    SDL_FRect* rects;
+    SDL_FColor* colors;
+    Uint32 rect_count;
+    Uint32 max_rects;
+    SDL_GPUBuffer* vbo;
+    Uint32 vbo_size;
+    SDL_GPUBuffer* ibo;
+    Uint32 ibo_size;
+    SDL_GPUShader* vertex;
+    SDL_GPUShader* fragment;
+    SDL_GPUGraphicsPipeline* pipeline;
+} UIComponent;
+
 // Billboard is a flag (no data)
 
 typedef vec4 AmbientLightComponent;
@@ -105,6 +119,12 @@ void remove_fps_controller (Entity e);
 void add_billboard (Entity e);
 bool has_billboard (Entity e);
 void remove_billboard (Entity e);
+
+// UI
+void add_ui (Entity e, UIComponent ui);
+bool has_ui (Entity e);
+UIComponent* get_ui (Entity e);
+void remove_ui (Entity e);
 
 // Ambient Lights
 void add_ambient_light (Entity e, vec3 rgb, float brightness);

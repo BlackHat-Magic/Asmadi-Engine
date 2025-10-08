@@ -8,10 +8,10 @@
 #include <SDL3/SDL_main.h>
 
 #include <ecs/ecs.h>
+#include <ui/ui.h>
 #include <geometry/torus.h>
 #include <material/m_common.h>
 #include <material/phong_material.h>
-// #include <ui/ui.h>
 
 #define STARTING_WIDTH 640
 #define STARTING_HEIGHT 480
@@ -20,6 +20,7 @@
 #define MOVEMENT_SPEED 3.0f
 
 Entity torus;
+Entity player;
 
 SDL_AppResult SDL_AppEvent (void* appstate, SDL_Event* event) {
     AppState* state = (AppState*) appstate;
@@ -127,6 +128,19 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
         return SDL_APP_FAILURE;
     }
 
+    // player
+    player = create_entity ();
+    add_transform (
+        player, (vec3) {0.0f, 0.0f, -2.0f}, (vec3) {0.0f, 0.0f, 0.0f},
+        (vec3) {1.0f, 1.0f, 1.0f}
+    );
+    add_camera (player, STARTING_FOV, 0.01f, 1000.0f);
+    add_fps_controller (player, MOUSE_SENSE, MOVEMENT_SPEED);
+    state->camera_entity = player;
+    SDL_SetWindowRelativeMouseMode (state->window, true);
+    UIComponent ui = create_ui_component(state, 255);
+    add_ui (player, ui);
+
     // torus
     torus = create_entity ();
     MeshComponent torus_mesh = create_torus_mesh (
@@ -156,124 +170,7 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
         (vec3) {1.0f, 1.0f, 1.0f}
     );
 
-    // camera
-    Entity camera = create_entity ();
-    add_transform (
-        camera, (vec3) {0.0f, 0.0f, -2.0f}, (vec3) {0.0f, 0.0f, 0.0f},
-        (vec3) {1.0f, 1.0f, 1.0f}
-    );
-    add_camera (camera, STARTING_FOV, 0.01f, 1000.0f);
-    add_fps_controller (camera, MOUSE_SENSE, MOVEMENT_SPEED);
-    state->camera_entity = camera;
-    SDL_SetWindowRelativeMouseMode (state->window, true);
-
-    state->rect_vshader = load_shader (
-        state->device, "shaders/ui.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX, 0, 0,
-        0, 0
-    );
-    if (state->rect_vshader == NULL) {
-        SDL_Log ("Unable to load rectangle vertex shader: %s", SDL_GetError ());
-        return SDL_APP_FAILURE;
-    }
-    state->rect_fshader = load_shader (
-        state->device, "shaders/ui_solid.frag.spv", SDL_GPU_SHADERSTAGE_FRAGMENT, 0,
-        0, 0, 0
-    );
-    if (state->rect_fshader == NULL) {
-        SDL_Log (
-            "Unable to load rectangle fragment shader: %s", SDL_GetError ()
-        );
-        SDL_ReleaseGPUShader (state->device, state->rect_vshader);
-        return SDL_APP_FAILURE;
-    }
-    SDL_GPUGraphicsPipelineCreateInfo rect_pipe_info = {
-        .target_info =
-            {
-                .num_color_targets = 1,
-                .color_target_descriptions =
-                    (SDL_GPUColorTargetDescription[]) {
-                        {.format = state->swapchain_format,
-                         .blend_state =
-                             {
-                                 .enable_blend = true,
-                                 .src_color_blendfactor =
-                                     SDL_GPU_BLENDFACTOR_SRC_ALPHA,
-                                 .dst_color_blendfactor =
-                                     SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-                                 .color_blend_op = SDL_GPU_BLENDOP_ADD,
-                                 .src_alpha_blendfactor =
-                                     SDL_GPU_BLENDFACTOR_ONE,
-                                 .dst_alpha_blendfactor =
-                                     SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-                                 .alpha_blend_op = SDL_GPU_BLENDOP_ADD,
-                             }}
-                    },
-                .has_depth_stencil_target = true,
-                .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
-            },
-        .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
-        .vertex_shader = state->rect_vshader,
-        .fragment_shader = state->rect_fshader,
-        .vertex_input_state =
-            {.num_vertex_buffers = 1,
-             .vertex_buffer_descriptions =
-                 (SDL_GPUVertexBufferDescription[]) {
-                     {.slot = 0,
-                      .pitch = sizeof (float) * 8,
-                      .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
-                      .instance_step_rate = 0}
-                 },
-             .num_vertex_attributes = 3,
-             .vertex_attributes =
-                 (SDL_GPUVertexAttribute[]) {
-                     {.location = 0,
-                      .buffer_slot = 0,
-                      .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
-                      .offset = 0}, // pos
-                     {.location = 1,
-                      .buffer_slot = 0,
-                      .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
-                      .offset = 2 * sizeof (float)}, // res
-                      {.location = 2,
-                        .buffer_slot = 0,
-                        .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
-                        .offset = 4 * sizeof (float)}, // color
-                 }},
-        .rasterizer_state =
-            {.fill_mode = SDL_GPU_FILLMODE_FILL,
-             .cull_mode = SDL_GPU_CULLMODE_NONE,
-             .front_face = SDL_GPU_FRONTFACE_CLOCKWISE},
-        .depth_stencil_state = {
-            .enable_depth_test = false,
-            .enable_depth_write = false,
-            .compare_op = SDL_GPU_COMPAREOP_ALWAYS,
-        }
-    };
-    SDL_Log("rect shaders: vs=%p fs=%p pitch=%u", (void*)state->rect_vshader, (void*)state->rect_fshader, (unsigned)(8*sizeof(float)));
-    state->rect_pipeline = SDL_CreateGPUGraphicsPipeline (state->device, &rect_pipe_info);
-    if (state->rect_pipeline == NULL) {
-        SDL_ReleaseGPUShader (state->device, state->rect_vshader);
-        SDL_ReleaseGPUShader (state->device, state->rect_fshader);
-        SDL_Log ("Unable to create rectangle graphics pipeline: %s", SDL_GetError ());
-        return SDL_APP_FAILURE;
-    }
-
-    SDL_GPUBufferCreateInfo rect_vbuffer_info = {
-        .size = 4096,
-        .usage = SDL_GPU_BUFFERUSAGE_VERTEX
-    };
-    state->rect_vbo =
-        SDL_CreateGPUBuffer (state->device, &rect_vbuffer_info);
-    if (state->rect_vbo == NULL) {
-        SDL_Log ("Unable to create rect vbuffer: %s", SDL_GetError ());
-        return SDL_APP_FAILURE;
-    }
-
     state->last_time = SDL_GetPerformanceCounter ();
-
-    // rectangle buffer
-    state->rects = malloc (sizeof (SDL_FRect) * 255);
-    state->rect_colors = malloc (sizeof (SDL_FColor) * 255);
 
     *appstate = state;
     SDL_Log ("Started app.");
@@ -296,9 +193,8 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
     state->last_time = now;
 
     // draw a rectangle
-    state->rects[0] = (SDL_FRect) {.x = 40.0f, .y = 40.0f, .w = 40.0f, .h = 40.0f};
-    state->rect_colors[0] = (SDL_FColor) {.r = 1.0f, .g = 0.0f, .b = 0.0f, .a = 1.0f};
-    state->rect_count = 1;
+    UIComponent* ui = get_ui (player);
+    draw_rectangle(ui, 40.0f, 40.0f, 40.0f, 40.0f, 1.0f, 0.0f, 0.0f, 1.0f);
 
     TransformComponent transform = *get_transform (torus);
     vec3 rotation = euler_from_quat (transform.rotation);
@@ -318,9 +214,13 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
 void SDL_AppQuit (void* appstate, SDL_AppResult result) {
     AppState* state = (AppState*) appstate;
 
-    SDL_ReleaseGPUGraphicsPipeline (state->device, state->rect_pipeline);
-    SDL_ReleaseGPUShader (state->device, state->rect_vshader);
-    SDL_ReleaseGPUShader (state->device, state->rect_fshader);
+    UIComponent ui = *(get_ui (player));
+
+    if (ui.rects) free (ui.rects);
+    if (ui.colors) free (ui.colors);
+    if (ui.pipeline) SDL_ReleaseGPUGraphicsPipeline (state->device, ui.pipeline);
+    if (ui.fragment) SDL_ReleaseGPUShader (state->device, ui.fragment);
+    if (ui.vertex) SDL_ReleaseGPUShader (state->device, ui.vertex);
 
     free_pools (state);
     if (state->white_texture) {

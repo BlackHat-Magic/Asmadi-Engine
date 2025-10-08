@@ -28,6 +28,7 @@ static GenericPool fps_controller_pool = {0};
 static GenericPool billboard_pool = {0}; // no data, just presence
 static GenericPool ambient_light_pool = {0};
 static GenericPool point_light_pool = {0};
+static GenericPool ui_pool = {0};
 
 // Helper to grow entity_to_index (sparse map)
 static void grow_entity_map (GenericPool* pool, Uint32 min_entity) {
@@ -261,6 +262,19 @@ void remove_billboard (Entity e) {
     pool_remove (&billboard_pool, e, 0);
 }
 
+void add_ui (Entity e, UIComponent ui) {
+    pool_add (&ui_pool, e, &ui, sizeof (UIComponent));
+};
+bool has_ui (Entity e) {
+    return pool_has (&ui_pool, e);
+};
+UIComponent* get_ui (Entity e) {
+    return (UIComponent*) pool_get (&ui_pool, e, sizeof (UIComponent));
+}
+void remove_ui (Entity e) {
+    pool_remove (&ui_pool, e, sizeof (UIComponent));
+};
+
 // Ambient Lights
 void add_ambient_light (Entity e, vec3 rgb, float brightness) {
     AmbientLightComponent comp = {rgb.x, rgb.y, rgb.z, brightness};
@@ -444,64 +458,30 @@ SDL_AppResult render_system (AppState* state) {
         .clear_depth = 1.0f
     };
 
-    // ui variables
-    const Uint32 vert_count = state->rect_count * 4;
-    const Uint32 index_count = state->rect_count * 6;
-
-    float vertices[vert_count * 8]; // vec3 per vertex
-    int indices[index_count];
-    const Uint32 bytes = sizeof (vertices);
-    const Uint32 isize = sizeof (indices);
-
     // ui copy pass
-    if (state->rect_count > 0) {
-        if (state->rect_vbo == NULL || state->rect_vbo_size < bytes) {
-            if (state->rect_vbo) {
-                SDL_ReleaseGPUBuffer (state->device, state->rect_vbo);
-                state->rect_vbo = NULL;
-                state->rect_vbo_size = 0;
-            }
-            SDL_GPUBufferCreateInfo vinfo = {
-                .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-                .size = bytes < 4096 ? 4096 : bytes
-            };
-            state->rect_vbo = SDL_CreateGPUBuffer (state->device, &vinfo);
-            if (state->rect_vbo == NULL) {
-                SDL_SubmitGPUCommandBuffer (cmd);
-                SDL_Log ("Failed to create rectangle vertex buffer: %s", SDL_GetError ());
-                return SDL_APP_FAILURE;
-            }
-            state->rect_vbo_size = bytes;
-        }
-        if (state->rect_ibo == NULL || state->rect_ibo_size < isize) {
-            if (state->rect_ibo) {
-                SDL_ReleaseGPUBuffer (state->device, state->rect_ibo);
-                state->rect_ibo = NULL;
-                state->rect_ibo_size = 0;
-            }
-            SDL_GPUBufferCreateInfo iinfo = {
-                .usage = SDL_GPU_BUFFERUSAGE_INDEX,
-                .size = isize < 4096 ? 4096 : isize,
-            };
-            state->rect_ibo = SDL_CreateGPUBuffer (state->device, &iinfo);
-            if (state->rect_ibo == NULL) {
-                SDL_SubmitGPUCommandBuffer (cmd);
-                SDL_Log ("Failed to create rectangle index buffer: %s", SDL_GetError ());
-                return SDL_APP_FAILURE;
-            }
-            state->rect_ibo_size = isize;
-        }
+    for (Uint32 i = 0; i < ui_pool.count; i++) {
+        UIComponent* ui = &((UIComponent*) ui_pool.data)[i];
+        if (ui->rect_count <= 0) continue;
 
-        SDL_Log ("creating buffers");
-        for (int i = 0; i < state->rect_count; i++) {
-            float x1 = state->rects[i].x;
-            float x2 = state->rects[i].x + state->rects[i].w;
-            float y1 = state->rects[i].y;
-            float y2 = state->rects[i].y + state->rects[i].h;
+        // ui variables
+        const Uint32 vert_count = ui->rect_count * 4;
+        const Uint32 index_count = ui->rect_count * 6;
+    
+        const Uint32 vsize = vert_count * 8 * sizeof (float);
+        const Uint32 isize = index_count * sizeof (Uint32);
+        float* vertices = malloc (vsize);
+        int* indices = malloc (isize);
+
+        for (int i = 0; i < ui->rect_count; i++) {
+            // SDL_Log ("%d", i);
+            float x1 = ui->rects[i].x;
+            float x2 = ui->rects[i].x + ui->rects[i].w;
+            float y1 = ui->rects[i].y;
+            float y2 = ui->rects[i].y + ui->rects[i].h;
 
             float rx = (float) state->width;
             float ry = (float) state->height;
-            SDL_FColor col = state->rect_colors[i];
+            SDL_FColor col = ui->colors[i];
             float cr = col.r, cg = col.g, cb = col.b, ca = col.a;
 
             float quad_vertices[] = {
@@ -510,20 +490,19 @@ SDL_AppResult render_system (AppState* state) {
                 x1, y1, rx, ry, cr, cg, cb, ca,
                 x2, y1, rx, ry, cr, cg, cb, ca
             };
-            memcpy (&vertices[i * 32], quad_vertices, sizeof (quad_vertices));
+            memcpy (vertices + i * 32, quad_vertices, sizeof (quad_vertices));
             Uint32 quad_indices[] = {
                 0 + i * 4, 1 + i * 4, 2 + i * 4,
                 1 + i * 4, 3 + i * 4, 2 + i * 4
             };
-            memcpy (&indices[i * 6], quad_indices, sizeof (quad_indices));
+            memcpy (indices + i * 6, quad_indices, sizeof (quad_indices));
         }
 
         // TODO copy pass per-frame is a capital offense
 
         // prepare vertices
-        SDL_Log ("preparing vertices");
         SDL_GPUTransferBufferCreateInfo vtinfo = {
-            .size = bytes,
+            .size = vsize,
             .usage= SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
         };
         SDL_GPUTransferBuffer* vtbuf = SDL_CreateGPUTransferBuffer (state->device, &vtinfo);
@@ -538,11 +517,10 @@ SDL_AppResult render_system (AppState* state) {
             SDL_Log ("Failed to map rectangle transfer buffer: %s", SDL_GetError ());
             return SDL_APP_FAILURE;
         }
-        memcpy (map, vertices, bytes);
+        memcpy (map, vertices, vsize);
         SDL_UnmapGPUTransferBuffer (state->device, vtbuf);
 
         // prepare indices
-        SDL_Log ("preparing indices");
         SDL_GPUTransferBufferCreateInfo itinfo = {
             .size = isize,
             .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
@@ -564,7 +542,6 @@ SDL_AppResult render_system (AppState* state) {
         SDL_UnmapGPUTransferBuffer (state->device, itbuf);
 
         // copy pass
-        SDL_Log ("beginning copy pass");
         SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(cmd);
         if (copy == NULL) {
             SDL_ReleaseGPUTransferBuffer (state->device, vtbuf);
@@ -575,26 +552,24 @@ SDL_AppResult render_system (AppState* state) {
         }
 
         // uplaod vertices
-        SDL_Log ("uploading vertices");
         SDL_GPUTransferBufferLocation vsrc = {
             .transfer_buffer = vtbuf,
             .offset = 0
         };
         SDL_GPUBufferRegion vdst = {
-            .buffer = state->rect_vbo,
+            .buffer = ui->vbo,
             .offset = 0,
-            .size = bytes
+            .size = vsize
         };
         SDL_UploadToGPUBuffer (copy, &vsrc, &vdst, false);
 
         // upload indices
-        SDL_Log ("uploading indices");
         SDL_GPUTransferBufferLocation isrc = {
             .transfer_buffer = itbuf,
             .offset = 0
         };
         SDL_GPUBufferRegion idst = {
-            .buffer = state->rect_ibo,
+            .buffer = ui->ibo,
             .offset = 0,
             .size = isize
         };
@@ -602,7 +577,9 @@ SDL_AppResult render_system (AppState* state) {
         SDL_ReleaseGPUTransferBuffer (state->device, vtbuf);
         SDL_ReleaseGPUTransferBuffer (state->device, itbuf);
         SDL_EndGPUCopyPass (copy);
-        SDL_Log("copy pass");
+
+        free (vertices);
+        free (indices);
     }
 
     SDL_GPURenderPass* pass =
@@ -704,25 +681,28 @@ SDL_AppResult render_system (AppState* state) {
     }
 
     // build CPU Vertex buffer from rects
-    if (state->rect_count > 0) {
-        SDL_BindGPUGraphicsPipeline(pass, state->rect_pipeline);
+    for (Uint32 i = 0; i < ui_pool.count; i++) {
+        UIComponent* ui = &((UIComponent*) ui_pool.data)[i];
+        if (ui->rect_count <= 0) continue;
+
+        SDL_BindGPUGraphicsPipeline(pass, ui->pipeline);
 
         SDL_GPUBufferBinding vrect_binding = {
-            .buffer = state->rect_vbo,
+            .buffer = ui->vbo,
             .offset = 0
         };
         SDL_BindGPUVertexBuffers (pass, 0, &vrect_binding, 1);
         SDL_GPUBufferBinding irect_binding = {
-            .buffer = state->rect_ibo,
+            .buffer = ui->ibo,
             .offset = 0
         };
         SDL_BindGPUIndexBuffer (pass, &irect_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
 
-        SDL_DrawGPUIndexedPrimitives (pass, index_count, 1, 0, 0, 0);
-    }
+        SDL_DrawGPUIndexedPrimitives (pass, ui->rect_count * 6, 1, 0, 0, 0);
 
-    // clear rects (rects must be drawn each frame)
-    state->rect_count = 0;
+        // clear rects (rects must be drawn each frame)
+        ui->rect_count = 0;
+    }
 
     SDL_EndGPURenderPass (pass);
     SDL_SubmitGPUCommandBuffer (cmd);
