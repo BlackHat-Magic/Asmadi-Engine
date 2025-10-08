@@ -1,7 +1,7 @@
 #include <SDL3/SDL_init.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_gpu.h>
@@ -466,7 +466,7 @@ SDL_AppResult render_system (AppState* state) {
         // ui variables
         const Uint32 vert_count = ui->rect_count * 4;
         const Uint32 index_count = ui->rect_count * 6;
-    
+
         const Uint32 vsize = vert_count * 8 * sizeof (float);
         const Uint32 isize = index_count * sizeof (Uint32);
         float* vertices = malloc (vsize);
@@ -484,17 +484,12 @@ SDL_AppResult render_system (AppState* state) {
             SDL_FColor col = ui->colors[i];
             float cr = col.r, cg = col.g, cb = col.b, ca = col.a;
 
-            float quad_vertices[] = {
-                x1, y2, rx, ry, cr, cg, cb, ca,
-                x2, y2, rx, ry, cr, cg, cb, ca,
-                x1, y1, rx, ry, cr, cg, cb, ca,
-                x2, y1, rx, ry, cr, cg, cb, ca
-            };
+            float quad_vertices[] = {x1, y2, rx, ry, cr, cg, cb, ca, x2, y2, rx,
+                                     ry, cr, cg, cb, ca, x1, y1, rx, ry, cr, cg,
+                                     cb, ca, x2, y1, rx, ry, cr, cg, cb, ca};
             memcpy (vertices + i * 32, quad_vertices, sizeof (quad_vertices));
-            Uint32 quad_indices[] = {
-                0 + i * 4, 1 + i * 4, 2 + i * 4,
-                1 + i * 4, 3 + i * 4, 2 + i * 4
-            };
+            Uint32 quad_indices[] = {0 + i * 4, 1 + i * 4, 2 + i * 4,
+                                     1 + i * 4, 3 + i * 4, 2 + i * 4};
             memcpy (indices + i * 6, quad_indices, sizeof (quad_indices));
         }
 
@@ -503,18 +498,24 @@ SDL_AppResult render_system (AppState* state) {
         // prepare vertices
         SDL_GPUTransferBufferCreateInfo vtinfo = {
             .size = vsize,
-            .usage= SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
         };
-        SDL_GPUTransferBuffer* vtbuf = SDL_CreateGPUTransferBuffer (state->device, &vtinfo);
+        SDL_GPUTransferBuffer* vtbuf =
+            SDL_CreateGPUTransferBuffer (state->device, &vtinfo);
         if (vtbuf == NULL) {
             SDL_SubmitGPUCommandBuffer (cmd);
-            SDL_Log ("Failed to create rectangle transfer buffer: %s", SDL_GetError ());
+            SDL_Log (
+                "Failed to create rectangle transfer buffer: %s",
+                SDL_GetError ()
+            );
             return SDL_APP_FAILURE;
         }
-        void* map =SDL_MapGPUTransferBuffer (state->device, vtbuf, false);
+        void* map = SDL_MapGPUTransferBuffer (state->device, vtbuf, false);
         if (map == NULL) {
-            SDL_ReleaseGPUTransferBuffer(state->device, vtbuf);
-            SDL_Log ("Failed to map rectangle transfer buffer: %s", SDL_GetError ());
+            SDL_ReleaseGPUTransferBuffer (state->device, vtbuf);
+            SDL_Log (
+                "Failed to map rectangle transfer buffer: %s", SDL_GetError ()
+            );
             return SDL_APP_FAILURE;
         }
         memcpy (map, vertices, vsize);
@@ -525,29 +526,37 @@ SDL_AppResult render_system (AppState* state) {
             .size = isize,
             .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
         };
-        SDL_GPUTransferBuffer* itbuf = SDL_CreateGPUTransferBuffer(state->device, &itinfo);
+        SDL_GPUTransferBuffer* itbuf =
+            SDL_CreateGPUTransferBuffer (state->device, &itinfo);
         if (itbuf == NULL) {
             SDL_SubmitGPUCommandBuffer (cmd);
-            SDL_Log ("Failed to create rectangle transfer buffer: %s", SDL_GetError ());
+            SDL_Log (
+                "Failed to create rectangle transfer buffer: %s",
+                SDL_GetError ()
+            );
             return SDL_APP_FAILURE;
         }
         map = SDL_MapGPUTransferBuffer (state->device, itbuf, false);
         if (map == NULL) {
-            SDL_ReleaseGPUTransferBuffer(state->device, vtbuf);
-            SDL_ReleaseGPUTransferBuffer(state->device, itbuf);
-            SDL_Log ("Failed to map rectangle transfer buffer: %s", SDL_GetError ());
+            SDL_ReleaseGPUTransferBuffer (state->device, vtbuf);
+            SDL_ReleaseGPUTransferBuffer (state->device, itbuf);
+            SDL_Log (
+                "Failed to map rectangle transfer buffer: %s", SDL_GetError ()
+            );
             return SDL_APP_FAILURE;
         }
         memcpy (map, indices, isize);
         SDL_UnmapGPUTransferBuffer (state->device, itbuf);
 
         // copy pass
-        SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(cmd);
+        SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass (cmd);
         if (copy == NULL) {
             SDL_ReleaseGPUTransferBuffer (state->device, vtbuf);
             SDL_ReleaseGPUTransferBuffer (state->device, itbuf);
             SDL_SubmitGPUCommandBuffer (cmd);
-            SDL_Log ("Failed to begin rectangle copy pass: %s", SDL_GetError ());
+            SDL_Log (
+                "Failed to begin rectangle copy pass: %s", SDL_GetError ()
+            );
             return SDL_APP_FAILURE;
         }
 
@@ -556,11 +565,8 @@ SDL_AppResult render_system (AppState* state) {
             .transfer_buffer = vtbuf,
             .offset = 0
         };
-        SDL_GPUBufferRegion vdst = {
-            .buffer = ui->vbo,
-            .offset = 0,
-            .size = vsize
-        };
+        SDL_GPUBufferRegion vdst =
+            {.buffer = ui->vbo, .offset = 0, .size = vsize};
         SDL_UploadToGPUBuffer (copy, &vsrc, &vdst, false);
 
         // upload indices
@@ -568,11 +574,8 @@ SDL_AppResult render_system (AppState* state) {
             .transfer_buffer = itbuf,
             .offset = 0
         };
-        SDL_GPUBufferRegion idst = {
-            .buffer = ui->ibo,
-            .offset = 0,
-            .size = isize
-        };
+        SDL_GPUBufferRegion idst =
+            {.buffer = ui->ibo, .offset = 0, .size = isize};
         SDL_UploadToGPUBuffer (copy, &isrc, &idst, false);
         SDL_ReleaseGPUTransferBuffer (state->device, vtbuf);
         SDL_ReleaseGPUTransferBuffer (state->device, itbuf);
@@ -685,18 +688,14 @@ SDL_AppResult render_system (AppState* state) {
         UIComponent* ui = &((UIComponent*) ui_pool.data)[i];
         if (ui->rect_count <= 0) continue;
 
-        SDL_BindGPUGraphicsPipeline(pass, ui->pipeline);
+        SDL_BindGPUGraphicsPipeline (pass, ui->pipeline);
 
-        SDL_GPUBufferBinding vrect_binding = {
-            .buffer = ui->vbo,
-            .offset = 0
-        };
+        SDL_GPUBufferBinding vrect_binding = {.buffer = ui->vbo, .offset = 0};
         SDL_BindGPUVertexBuffers (pass, 0, &vrect_binding, 1);
-        SDL_GPUBufferBinding irect_binding = {
-            .buffer = ui->ibo,
-            .offset = 0
-        };
-        SDL_BindGPUIndexBuffer (pass, &irect_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+        SDL_GPUBufferBinding irect_binding = {.buffer = ui->ibo, .offset = 0};
+        SDL_BindGPUIndexBuffer (
+            pass, &irect_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT
+        );
 
         SDL_DrawGPUIndexedPrimitives (pass, ui->rect_count * 6, 1, 0, 0, 0);
 

@@ -8,10 +8,10 @@
 #include <SDL3/SDL_main.h>
 
 #include <ecs/ecs.h>
-#include <ui/ui.h>
 #include <geometry/torus.h>
 #include <material/m_common.h>
 #include <material/phong_material.h>
+#include <ui/ui.h>
 
 #define STARTING_WIDTH 640
 #define STARTING_HEIGHT 480
@@ -138,7 +138,7 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     add_fps_controller (player, MOUSE_SENSE, MOVEMENT_SPEED);
     state->camera_entity = player;
     SDL_SetWindowRelativeMouseMode (state->window, true);
-    UIComponent ui = create_ui_component(state, 255);
+    UIComponent ui = create_ui_component (state, 255);
     add_ui (player, ui);
 
     // torus
@@ -194,7 +194,7 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
 
     // draw a rectangle
     UIComponent* ui = get_ui (player);
-    draw_rectangle(ui, 40.0f, 40.0f, 40.0f, 40.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+    draw_rectangle (ui, 40.0f, 40.0f, 40.0f, 40.0f, 1.0f, 0.0f, 0.0f, 1.0f);
 
     TransformComponent transform = *get_transform (torus);
     vec3 rotation = euler_from_quat (transform.rotation);
@@ -218,7 +218,8 @@ void SDL_AppQuit (void* appstate, SDL_AppResult result) {
 
     if (ui.rects) free (ui.rects);
     if (ui.colors) free (ui.colors);
-    if (ui.pipeline) SDL_ReleaseGPUGraphicsPipeline (state->device, ui.pipeline);
+    if (ui.pipeline)
+        SDL_ReleaseGPUGraphicsPipeline (state->device, ui.pipeline);
     if (ui.fragment) SDL_ReleaseGPUShader (state->device, ui.fragment);
     if (ui.vertex) SDL_ReleaseGPUShader (state->device, ui.vertex);
 

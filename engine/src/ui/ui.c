@@ -10,8 +10,8 @@ UIComponent create_ui_component (AppState* state, Uint32 max_rects) {
     ui.rect_count = 0;
     ui.max_rects = max_rects;
 
-    // max rects * 4 vertices per rect * 8 floats per vertex * 4(?) bytes per float
-    // minimum 4KiB
+    // max rects * 4 vertices per rect * 8 floats per vertex * 4(?) bytes per
+    // float minimum 4KiB
     Uint32 vsize = max_rects * 4 * 8 * sizeof (float);
     vsize = vsize < 4096 ? 4096 : vsize;
     SDL_GPUBufferCreateInfo vinfo = {
@@ -43,13 +43,19 @@ UIComponent create_ui_component (AppState* state, Uint32 max_rects) {
     }
     ui.ibo_size = isize;
 
-    ui.vertex = load_shader (state->device, "shaders/ui.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX, 0, 0, 0, 0);
+    ui.vertex = load_shader (
+        state->device, "shaders/ui.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX, 0, 0,
+        0, 0
+    );
     if (ui.vertex == NULL) {
         free (ui.rects);
         free (ui.colors);
         return (UIComponent) {0};
     }
-    ui.fragment = load_shader (state->device, "shaders/ui_solid.frag.spv", SDL_GPU_SHADERSTAGE_FRAGMENT, 0, 0, 0, 0);
+    ui.fragment = load_shader (
+        state->device, "shaders/ui_solid.frag.spv",
+        SDL_GPU_SHADERSTAGE_FRAGMENT, 0, 0, 0, 0
+    );
     if (ui.fragment == NULL) {
         free (ui.rects);
         free (ui.colors);
@@ -105,10 +111,10 @@ UIComponent create_ui_component (AppState* state, Uint32 max_rects) {
                       .buffer_slot = 0,
                       .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
                       .offset = 2 * sizeof (float)}, // res
-                      {.location = 2,
-                        .buffer_slot = 0,
-                        .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
-                        .offset = 4 * sizeof (float)}, // color
+                     {.location = 2,
+                      .buffer_slot = 0,
+                      .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
+                      .offset = 4 * sizeof (float)}, // color
                  }},
         .rasterizer_state =
             {.fill_mode = SDL_GPU_FILLMODE_FILL,
@@ -133,7 +139,17 @@ UIComponent create_ui_component (AppState* state, Uint32 max_rects) {
     return ui;
 }
 
-void draw_rectangle (UIComponent* ui, float x, float y, float w, float h, float r, float g, float b, float a) {
+void draw_rectangle (
+    UIComponent* ui,
+    float x,
+    float y,
+    float w,
+    float h,
+    float r,
+    float g,
+    float b,
+    float a
+) {
     // skip drawing too many rects
     if (ui->rect_count >= ui->max_rects) return;
 
