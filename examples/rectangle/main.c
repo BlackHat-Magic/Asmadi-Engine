@@ -70,6 +70,12 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
         return SDL_APP_FAILURE;
     }
 
+    // Initialize SDL_ttf
+    if (!TTF_Init ()) {
+        SDL_Log ("Couldn't initialize SDL_ttf: %s", SDL_GetError ());
+        return SDL_APP_FAILURE;
+    }
+
     // create GPU device
     state->device =
         SDL_CreateGPUDevice (SDL_GPU_SHADERFORMAT_SPIRV, false, NULL);
@@ -138,7 +144,11 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     add_fps_controller (player, MOUSE_SENSE, MOVEMENT_SPEED);
     state->camera_entity = player;
     SDL_SetWindowRelativeMouseMode (state->window, true);
-    UIComponent ui = create_ui_component (state, 255);
+    UIComponent ui = create_ui_component (state, 255, "./assets/NotoSans-Regular.ttf", 12.0f);
+    if (ui.font == NULL) {
+        // logging handled inside function
+        return SDL_APP_FAILURE;
+    }
     add_ui (player, ui);
 
     // torus
@@ -220,7 +230,7 @@ void SDL_AppQuit (void* appstate, SDL_AppResult result) {
     if (ui.colors) free (ui.colors);
     if (ui.pipeline)
         SDL_ReleaseGPUGraphicsPipeline (state->device, ui.pipeline);
-    if (ui.fragment) SDL_ReleaseGPUShader (state->device, ui.fragment);
+    if (ui.rect_fragment) SDL_ReleaseGPUShader (state->device, ui.rect_fragment);
     if (ui.vertex) SDL_ReleaseGPUShader (state->device, ui.vertex);
 
     free_pools (state);

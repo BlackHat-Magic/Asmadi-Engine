@@ -1,9 +1,17 @@
 #include <stdlib.h>
 
+#include <SDL3_ttf/SDL_ttf.h>
+
 #include <ui/ui.h>
 
-UIComponent create_ui_component (AppState* state, Uint32 max_rects) {
+UIComponent create_ui_component (const AppState* state, const Uint32 max_rects, const char* font_path, const float ptsize) {
     UIComponent ui;
+
+    ui.font = TTF_OpenFont (font_path, ptsize);
+    if (ui.font == NULL) {
+        SDL_Log ("Failed to create UI font: %s", SDL_GetError ());
+        return (UIComponent) {0};
+    }
 
     ui.rects = malloc (sizeof (SDL_FRect) * max_rects);
     ui.colors = malloc (sizeof (SDL_FColor) * max_rects);
@@ -52,11 +60,11 @@ UIComponent create_ui_component (AppState* state, Uint32 max_rects) {
         free (ui.colors);
         return (UIComponent) {0};
     }
-    ui.fragment = load_shader (
+    ui.rect_fragment = load_shader (
         state->device, "shaders/ui_solid.frag.spv",
         SDL_GPU_SHADERSTAGE_FRAGMENT, 0, 0, 0, 0
     );
-    if (ui.fragment == NULL) {
+    if (ui.rect_fragment == NULL) {
         free (ui.rects);
         free (ui.colors);
         SDL_ReleaseGPUShader (state->device, ui.vertex);
@@ -90,7 +98,7 @@ UIComponent create_ui_component (AppState* state, Uint32 max_rects) {
             },
         .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
         .vertex_shader = ui.vertex,
-        .fragment_shader = ui.fragment,
+        .fragment_shader = ui.rect_fragment,
         .vertex_input_state =
             {.num_vertex_buffers = 1,
              .vertex_buffer_descriptions =
@@ -131,7 +139,7 @@ UIComponent create_ui_component (AppState* state, Uint32 max_rects) {
         free (ui.rects);
         free (ui.colors);
         SDL_ReleaseGPUShader (state->device, ui.vertex);
-        SDL_ReleaseGPUShader (state->device, ui.fragment);
+        SDL_ReleaseGPUShader (state->device, ui.rect_fragment);
         SDL_Log ("Unable to create UI graphics pipeline: %s", SDL_GetError ());
         return (UIComponent) {0};
     }
@@ -141,14 +149,14 @@ UIComponent create_ui_component (AppState* state, Uint32 max_rects) {
 
 void draw_rectangle (
     UIComponent* ui,
-    float x,
-    float y,
-    float w,
-    float h,
-    float r,
-    float g,
-    float b,
-    float a
+    const float x,
+    const float y,
+    const float w,
+    const float h,
+    const float r,
+    const float g,
+    const float b,
+    const float a
 ) {
     // skip drawing too many rects
     if (ui->rect_count >= ui->max_rects) return;

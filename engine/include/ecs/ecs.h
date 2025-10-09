@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
 
 #include "core/appstate.h"
 #include "math/matrix.h"
@@ -71,8 +72,10 @@ typedef struct {
     SDL_GPUBuffer* ibo;
     Uint32 ibo_size;
     SDL_GPUShader* vertex;
-    SDL_GPUShader* fragment;
+    SDL_GPUShader* rect_fragment;
+    SDL_GPUShader* text_fragment;
     SDL_GPUGraphicsPipeline* pipeline;
+    TTF_Font* font;
 } UIComponent;
 
 // Billboard is a flag (no data)
