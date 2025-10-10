@@ -63,19 +63,37 @@ typedef struct {
 } FpsCameraControllerComponent;
 
 typedef struct {
-    SDL_FRect* rects;
-    SDL_FColor* colors;
+    SDL_FRect dst;
+    SDL_FColor color;
+    SDL_GPUTexture* texture;
+} UITextItem;
+typedef struct {
+    SDL_FRect rect;
+    SDL_FColor color;
+} UIRectItem;
+
+typedef struct {
+    // rectangle
+    UIRectItem* rects;
     Uint32 rect_count;
     Uint32 max_rects;
+
+    // text
+    TTF_Font* font;
+    UITextItem* texts;
+    Uint32 text_count;
+    Uint32 max_texts;
+
+    // GPU buffers
     SDL_GPUBuffer* vbo;
     Uint32 vbo_size;
     SDL_GPUBuffer* ibo;
     Uint32 ibo_size;
+
+    // uh
     SDL_GPUShader* vertex;
-    SDL_GPUShader* rect_fragment;
-    SDL_GPUShader* text_fragment;
+    SDL_GPUShader* fragment;
     SDL_GPUGraphicsPipeline* pipeline;
-    TTF_Font* font;
 } UIComponent;
 
 // Billboard is a flag (no data)

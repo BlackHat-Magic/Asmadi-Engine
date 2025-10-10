@@ -13,8 +13,8 @@
 #include <material/phong_material.h>
 #include <ui/ui.h>
 
-#define STARTING_WIDTH 640
-#define STARTING_HEIGHT 480
+#define STARTING_WIDTH 1280
+#define STARTING_HEIGHT 720
 #define STARTING_FOV 70.0
 #define MOUSE_SENSE 1.0f / 100.0f
 #define MOVEMENT_SPEED 3.0f
@@ -144,7 +144,7 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     add_fps_controller (player, MOUSE_SENSE, MOVEMENT_SPEED);
     state->camera_entity = player;
     SDL_SetWindowRelativeMouseMode (state->window, true);
-    UIComponent ui = create_ui_component (state, 255, "./assets/NotoSans-Regular.ttf", 12.0f);
+    UIComponent ui = create_ui_component (state, 255, 255, "./assets/NotoSans-Regular.ttf", 12.0f);
     if (ui.font == NULL) {
         // logging handled inside function
         return SDL_APP_FAILURE;
@@ -160,7 +160,7 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     add_mesh (torus, torus_mesh);
     // torus material
     MaterialComponent torus_material =
-        create_phong_material ((vec3) {1.0f, 1.0f, 1.0f}, SIDE_FRONT, state);
+        create_phong_material ((vec3) {0.0f, 1.0f, 0.0f}, SIDE_FRONT, state);
     add_material (torus, torus_material);
     // torus transform
     add_transform (
@@ -204,7 +204,7 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
 
     // draw a rectangle
     UIComponent* ui = get_ui (player);
-    draw_rectangle (ui, 40.0f, 40.0f, 40.0f, 40.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+    draw_rectangle (ui, 40.0f, 40.0f, 1200.0f, 640.0f, 1.0f, 0.0f, 0.0f, 1.0f);
 
     TransformComponent transform = *get_transform (torus);
     vec3 rotation = euler_from_quat (transform.rotation);
@@ -227,10 +227,9 @@ void SDL_AppQuit (void* appstate, SDL_AppResult result) {
     UIComponent ui = *(get_ui (player));
 
     if (ui.rects) free (ui.rects);
-    if (ui.colors) free (ui.colors);
     if (ui.pipeline)
         SDL_ReleaseGPUGraphicsPipeline (state->device, ui.pipeline);
-    if (ui.rect_fragment) SDL_ReleaseGPUShader (state->device, ui.rect_fragment);
+    if (ui.fragment) SDL_ReleaseGPUShader (state->device, ui.fragment);
     if (ui.vertex) SDL_ReleaseGPUShader (state->device, ui.vertex);
 
     free_pools (state);

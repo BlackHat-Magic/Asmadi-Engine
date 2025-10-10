@@ -54,7 +54,7 @@ if(COMPILE_SHADERS AND GLSLANG_VALIDATOR)
         phong_material.vert
         phong_material.frag
         ui.vert
-        ui_solid.frag
+        ui.frag
     )
 
     foreach(SHADER ${SHADERS})
