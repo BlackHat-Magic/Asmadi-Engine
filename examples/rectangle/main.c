@@ -208,6 +208,7 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
     UIComponent* ui = get_ui (player);
     draw_rectangle (ui, 40.0f, 40.0f, 40.0f, 40.0f, 1.0f, 0.0f, 0.0f, 1.0f);
     draw_text (ui, state, "hello, world", 40.0f, 40.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+    draw_rectangle (ui, 80.0f, 40.0f, 40.0f, 40.0f, 0.0f, 1.0f, 0.0f, 1.0f);
 
     TransformComponent transform = *get_transform (torus);
     vec3 rotation = euler_from_quat (transform.rotation);

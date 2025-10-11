@@ -63,26 +63,21 @@ typedef struct {
 } FpsCameraControllerComponent;
 
 typedef struct {
-    SDL_FRect dst;
-    SDL_FColor color;
-    SDL_GPUTexture* texture;
-} UITextItem;
-typedef struct {
     SDL_FRect rect;
     SDL_FColor color;
-} UIRectItem;
+    SDL_GPUTexture* texture;
+} UIRect;
 
 typedef struct {
     // rectangle
-    UIRectItem* rects;
+    UIRect* rects;
     Uint32 rect_count;
     Uint32 max_rects;
+    SDL_GPUTexture* white_texture;
+    SDL_GPUSampler* sampler;
 
     // text
     TTF_Font* font;
-    UITextItem* texts;
-    Uint32 text_count;
-    Uint32 max_texts;
 
     // GPU buffers
     SDL_GPUBuffer* vbo;

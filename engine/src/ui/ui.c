@@ -1,7 +1,10 @@
+#include <SDL3/SDL_gpu.h>
 #include <stdlib.h>
 
 #include <SDL3_ttf/SDL_ttf.h>
 
+#include <ecs/ecs.h>
+#include <material/m_common.h>
 #include <ui/ui.h>
 
 UIComponent create_ui_component (
@@ -13,7 +16,7 @@ UIComponent create_ui_component (
 ) {
     UIComponent ui;
 
-    ui.rects = malloc (sizeof (UIRectItem) * max_rects);
+    ui.rects = malloc (sizeof (UIRect) * max_rects);
     if (ui.rects == NULL) {
         SDL_Log ("Failed to allocate UI rects.");
         return (UIComponent) {0};
@@ -21,21 +24,38 @@ UIComponent create_ui_component (
     ui.rect_count = 0;
     ui.max_rects = max_rects;
 
+    // white texture
+    ui.white_texture = create_white_texture (state->device);
+    if (ui.white_texture == NULL) {
+        free (ui.rects);
+        return (UIComponent) {0};
+    }
+
+    // sampler
+    SDL_GPUSamplerCreateInfo sampler_info = {
+        .min_filter = SDL_GPU_FILTER_LINEAR,
+        .mag_filter = SDL_GPU_FILTER_LINEAR,
+        .mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR,
+        .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+        .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+        .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+        .max_anisotropy = 1.0f,
+        .enable_anisotropy = false
+    };
+    ui.sampler = SDL_CreateGPUSampler (state->device, &sampler_info);
+    if (ui.sampler == NULL) {
+        free (ui.rects);
+        SDL_ReleaseGPUTexture (state->device, ui.white_texture);
+        SDL_Log ("Failed to create sampler: %s", SDL_GetError ());
+        return (UIComponent) {0};
+    }
+
     ui.font = TTF_OpenFont (font_path, ptsize);
     if (ui.font == NULL) {
         free (ui.rects);
         SDL_Log ("Failed to create UI font: %s", SDL_GetError ());
         return (UIComponent) {0};
     }
-    ui.texts = malloc (sizeof (UITextItem) * max_texts);
-    if (ui.texts == NULL) {
-        free (ui.rects);
-        TTF_CloseFont (ui.font);
-        SDL_Log ("Failed to allocate UI text buffer.");
-        return (UIComponent) {0};
-    }
-    ui.text_count = 0;
-    ui.max_texts = max_texts;
 
     // max rects * 4 vertices per rect * 10 floats per vertex * 4(?) bytes per
     // float minimum 4KiB
@@ -48,7 +68,6 @@ UIComponent create_ui_component (
     ui.vbo = SDL_CreateGPUBuffer (state->device, &vinfo);
     if (ui.vbo == NULL) {
         free (ui.rects);
-        free (ui.texts);
         TTF_CloseFont (ui.font);
         SDL_Log ("Failed to create UI vertex buffer: %s", SDL_GetError ());
         return (UIComponent) {0};
@@ -64,7 +83,6 @@ UIComponent create_ui_component (
     ui.ibo = SDL_CreateGPUBuffer (state->device, &iinfo);
     if (ui.ibo == NULL) {
         free (ui.rects);
-        free (ui.texts);
         TTF_CloseFont (ui.font);
         SDL_ReleaseGPUBuffer (state->device, ui.vbo);
         SDL_Log ("Failed to create UI index buffer: %s", SDL_GetError ());
@@ -78,7 +96,6 @@ UIComponent create_ui_component (
     );
     if (ui.vertex == NULL) {
         free (ui.rects);
-        free (ui.texts);
         TTF_CloseFont (ui.font);
         SDL_ReleaseGPUBuffer (state->device, ui.vbo);
         SDL_ReleaseGPUBuffer (state->device, ui.ibo);
@@ -90,7 +107,6 @@ UIComponent create_ui_component (
     );
     if (ui.fragment == NULL) {
         free (ui.rects);
-        free (ui.texts);
         TTF_CloseFont (ui.font);
         SDL_ReleaseGPUBuffer (state->device, ui.vbo);
         SDL_ReleaseGPUBuffer (state->device, ui.ibo);
@@ -168,7 +184,6 @@ UIComponent create_ui_component (
     ui.pipeline = SDL_CreateGPUGraphicsPipeline (state->device, &info);
     if (ui.pipeline == NULL) {
         free (ui.rects);
-        free (ui.texts);
         TTF_CloseFont (ui.font);
         SDL_ReleaseGPUBuffer (state->device, ui.vbo);
         SDL_ReleaseGPUBuffer (state->device, ui.ibo);
@@ -197,6 +212,7 @@ void draw_rectangle (
 
     ui->rects[ui->rect_count].rect = (SDL_FRect) {x, y, w, h};
     ui->rects[ui->rect_count].color = (SDL_FColor) {r, g, b, a};
+    ui->rects[ui->rect_count].texture = ui->white_texture;
     ui->rect_count++;
 }
 
@@ -289,7 +305,7 @@ int draw_text (
     float a
 ) {
     if (!ui || !ui->font || !utf8) return 0;
-    if (ui->text_count >= ui->max_texts) return 0;
+    if (ui->rect_count >= ui->max_rects) return 0;
 
     SDL_Color color = {
         (Uint8) (r * 255.0f), (Uint8) (g * 255.0f), (Uint8) (b * 255.0f),
@@ -313,8 +329,8 @@ int draw_text (
     SDL_DestroySurface (abgr);
     if (!tex) return 0;
 
-    ui->texts[ui->text_count++] = (UITextItem) {
-        .dst = (SDL_FRect) {x, y, (float) w, (float) h},
+    ui->rects[ui->rect_count++] = (UIRect) {
+        .rect = (SDL_FRect) {x, y, (float) w, (float) h},
         .color = (SDL_FColor) {r, g, b, a},
         .texture = tex,
     };
