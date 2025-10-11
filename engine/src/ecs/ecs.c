@@ -561,6 +561,13 @@ SDL_AppResult render_system (AppState* state) {
         UIComponent* ui = &((UIComponent*) ui_pool.data)[i];
         if (ui->rect_count <= 0) continue;
 
+        // white texture
+        SDL_GPUTextureSamplerBinding tex_bind_rect = {
+            .texture = state->white_texture,
+            .sampler = state->sampler,
+        };
+        SDL_BindGPUFragmentSamplers (pass, 0, &tex_bind_rect, 1);
+
         // ui variables
         const Uint32 vert_count = ui->rect_count * 4;
         const Uint32 index_count = ui->rect_count * 6;
@@ -695,15 +702,6 @@ SDL_AppResult render_system (AppState* state) {
             pass, &irect_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT
         );
 
-        // This is the secret message: fhqwhgads
-
-        // white texture
-        SDL_GPUTextureSamplerBinding tex_bind_rect = {
-            .texture = state->white_texture,
-            .sampler = state->sampler,
-        };
-        SDL_BindGPUFragmentSamplers (pass, 0, &tex_bind_rect, 1);
-
         SDL_DrawGPUIndexedPrimitives (pass, ui->rect_count * 6, 1, 0, 0, 0);
 
         // clear rects (rects must be drawn each frame)
@@ -717,6 +715,13 @@ SDL_AppResult render_system (AppState* state) {
 
         for (Uint32 t = 0; t < ui->text_count; t++) {
             UITextItem* item = &ui->texts[t];
+
+            // Bind the text texture
+            SDL_GPUTextureSamplerBinding tex_bind = {
+                .texture = item->texture,
+                .sampler = state->sampler
+            };
+            SDL_BindGPUFragmentSamplers(pass, 0, &tex_bind, 1);
 
             // Build quad vertices (10 floats per vertex)
             float rx = (float)state->width;
@@ -770,13 +775,6 @@ SDL_AppResult render_system (AppState* state) {
             SDL_EndGPUCopyPass(copy);
             SDL_ReleaseGPUTransferBuffer(state->device, vtbuf);
             SDL_ReleaseGPUTransferBuffer(state->device, itbuf);
-
-            // Bind the text texture
-            SDL_GPUTextureSamplerBinding tex_bind = {
-                .texture = item->texture,
-                .sampler = state->sampler
-            };
-            SDL_BindGPUFragmentSamplers(pass, 0, &tex_bind, 1);
 
             // Bind buffers and draw
             SDL_GPUBufferBinding vbind = {.buffer = ui->vbo, .offset = 0};
