@@ -591,10 +591,10 @@ SDL_AppResult render_system (AppState* state) {
             float cr = col.r, cg = col.g, cb = col.b, ca = col.a;
 
             float quad_vertices[] = {
-                x1, y2, rx, ry,  cr, cg, cb, ca,  0.0f, 1.0f,
-                x2, y2, rx, ry,  cr, cg, cb, ca,  1.0f, 1.0f,
-                x1, y1, rx, ry,  cr, cg, cb, ca,  0.0f, 0.0f,
-                x2, y1, rx, ry,  cr, cg, cb, ca,  1.0f, 0.0f,
+                x1, y2, rx, ry, cr, cg, cb, ca, 0.0f, 1.0f,
+                x2, y2, rx, ry, cr, cg, cb, ca, 1.0f, 1.0f,
+                x1, y1, rx, ry, cr, cg, cb, ca, 0.0f, 0.0f,
+                x2, y1, rx, ry, cr, cg, cb, ca, 1.0f, 0.0f,
             };
             memcpy (vertices + i * 40, quad_vertices, sizeof (quad_vertices));
             Uint32 quad_indices[] = {0 + i * 4, 1 + i * 4, 2 + i * 4,
@@ -710,7 +710,7 @@ SDL_AppResult render_system (AppState* state) {
 
     // draw queued texts
     for (Uint32 i = 0; i < ui_pool.count; i++) {
-        UIComponent* ui = &((UIComponent*)ui_pool.data)[i];
+        UIComponent* ui = &((UIComponent*) ui_pool.data)[i];
         if (ui->text_count == 0) continue;
 
         for (Uint32 t = 0; t < ui->text_count; t++) {
@@ -721,11 +721,11 @@ SDL_AppResult render_system (AppState* state) {
                 .texture = item->texture,
                 .sampler = state->sampler
             };
-            SDL_BindGPUFragmentSamplers(pass, 0, &tex_bind, 1);
+            SDL_BindGPUFragmentSamplers (pass, 0, &tex_bind, 1);
 
             // Build quad vertices (10 floats per vertex)
-            float rx = (float)state->width;
-            float ry = (float)state->height;
+            float rx = (float) state->width;
+            float ry = (float) state->height;
             float x1 = item->dst.x;
             float y1 = item->dst.y;
             float x2 = item->dst.x + item->dst.w;
@@ -741,50 +741,69 @@ SDL_AppResult render_system (AppState* state) {
             Uint32 inds[6] = {0, 1, 2, 1, 3, 2};
 
             // Upload to the same VBO/IBO (overwrite from offset 0 per text)
-            Uint32 vsize = sizeof(verts);
-            Uint32 isize = sizeof(inds);
+            Uint32 vsize = sizeof (verts);
+            Uint32 isize = sizeof (inds);
 
             SDL_GPUTransferBufferCreateInfo vtinfo = {
                 .size = vsize,
                 .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
             };
-            SDL_GPUTransferBuffer* vtbuf = SDL_CreateGPUTransferBuffer(state->device, &vtinfo);
-            if (!vtbuf) { SDL_Log("UI text vtbuf failed: %s", SDL_GetError()); return SDL_APP_FAILURE; }
-            void* vmap = SDL_MapGPUTransferBuffer(state->device, vtbuf, false);
-            memcpy(vmap, verts, vsize);
-            SDL_UnmapGPUTransferBuffer(state->device, vtbuf);
+            SDL_GPUTransferBuffer* vtbuf =
+                SDL_CreateGPUTransferBuffer (state->device, &vtinfo);
+            if (!vtbuf) {
+                SDL_Log ("UI text vtbuf failed: %s", SDL_GetError ());
+                return SDL_APP_FAILURE;
+            }
+            void* vmap = SDL_MapGPUTransferBuffer (state->device, vtbuf, false);
+            memcpy (vmap, verts, vsize);
+            SDL_UnmapGPUTransferBuffer (state->device, vtbuf);
 
             SDL_GPUTransferBufferCreateInfo itinfo = {
                 .size = isize,
                 .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
             };
-            SDL_GPUTransferBuffer* itbuf = SDL_CreateGPUTransferBuffer(state->device, &itinfo);
-            if (!itbuf) { SDL_Log("UI text itbuf failed: %s", SDL_GetError()); SDL_ReleaseGPUTransferBuffer(state->device, vtbuf); return SDL_APP_FAILURE; }
-            void* imap = SDL_MapGPUTransferBuffer(state->device, itbuf, false);
-            memcpy(imap, inds, isize);
-            SDL_UnmapGPUTransferBuffer(state->device, itbuf);
+            SDL_GPUTransferBuffer* itbuf =
+                SDL_CreateGPUTransferBuffer (state->device, &itinfo);
+            if (!itbuf) {
+                SDL_Log ("UI text itbuf failed: %s", SDL_GetError ());
+                SDL_ReleaseGPUTransferBuffer (state->device, vtbuf);
+                return SDL_APP_FAILURE;
+            }
+            void* imap = SDL_MapGPUTransferBuffer (state->device, itbuf, false);
+            memcpy (imap, inds, isize);
+            SDL_UnmapGPUTransferBuffer (state->device, itbuf);
 
-            SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(cmd);
-            SDL_GPUTransferBufferLocation vsrc = {.transfer_buffer = vtbuf, .offset = 0};
-            SDL_GPUBufferRegion vdst = {.buffer = ui->vbo, .offset = 0, .size = vsize};
-            SDL_UploadToGPUBuffer(copy, &vsrc, &vdst, false);
+            SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass (cmd);
+            SDL_GPUTransferBufferLocation vsrc = {
+                .transfer_buffer = vtbuf,
+                .offset = 0
+            };
+            SDL_GPUBufferRegion vdst =
+                {.buffer = ui->vbo, .offset = 0, .size = vsize};
+            SDL_UploadToGPUBuffer (copy, &vsrc, &vdst, false);
 
-            SDL_GPUTransferBufferLocation isrc = {.transfer_buffer = itbuf, .offset = 0};
-            SDL_GPUBufferRegion idst = {.buffer = ui->ibo, .offset = 0, .size = isize};
-            SDL_UploadToGPUBuffer(copy, &isrc, &idst, false);
-            SDL_EndGPUCopyPass(copy);
-            SDL_ReleaseGPUTransferBuffer(state->device, vtbuf);
-            SDL_ReleaseGPUTransferBuffer(state->device, itbuf);
+            SDL_GPUTransferBufferLocation isrc = {
+                .transfer_buffer = itbuf,
+                .offset = 0
+            };
+            SDL_GPUBufferRegion idst =
+                {.buffer = ui->ibo, .offset = 0, .size = isize};
+            SDL_UploadToGPUBuffer (copy, &isrc, &idst, false);
+            SDL_EndGPUCopyPass (copy);
+            SDL_ReleaseGPUTransferBuffer (state->device, vtbuf);
+            SDL_ReleaseGPUTransferBuffer (state->device, itbuf);
 
             // Bind buffers and draw
             SDL_GPUBufferBinding vbind = {.buffer = ui->vbo, .offset = 0};
-            SDL_BindGPUVertexBuffers(pass, 0, &vbind, 1);
+            SDL_BindGPUVertexBuffers (pass, 0, &vbind, 1);
             SDL_GPUBufferBinding ibind = {.buffer = ui->ibo, .offset = 0};
-            SDL_BindGPUIndexBuffer(pass, &ibind, SDL_GPU_INDEXELEMENTSIZE_32BIT);
-            SDL_DrawGPUIndexedPrimitives(pass, 6, 1, 0, 0, 0);
+            SDL_BindGPUIndexBuffer (
+                pass, &ibind, SDL_GPU_INDEXELEMENTSIZE_32BIT
+            );
+            SDL_DrawGPUIndexedPrimitives (pass, 6, 1, 0, 0, 0);
 
             // Release texture after drawing (per-frame transient)
-            SDL_ReleaseGPUTexture(state->device, item->texture);
+            SDL_ReleaseGPUTexture (state->device, item->texture);
             item->texture = NULL;
         }
 

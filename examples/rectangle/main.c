@@ -144,7 +144,9 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     add_fps_controller (player, MOUSE_SENSE, MOVEMENT_SPEED);
     state->camera_entity = player;
     SDL_SetWindowRelativeMouseMode (state->window, true);
-    UIComponent ui = create_ui_component (state, 255, 255, "./assets/NotoSans-Regular.ttf", 12.0f);
+    UIComponent ui = create_ui_component (
+        state, 255, 255, "./assets/NotoSans-Regular.ttf", 12.0f
+    );
     if (ui.font == NULL) {
         // logging handled inside function
         return SDL_APP_FAILURE;
