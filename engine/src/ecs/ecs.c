@@ -383,7 +383,7 @@ void fps_controller_update_system (AppState* state, float dt) {
     }
 }
 
-SDL_AppResult render_system (AppState* state) {
+SDL_AppResult render_system (AppState* state, Uint64* prerender, Uint64* preui, Uint64* postrender) {
     SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer (state->device);
     SDL_GPUTexture* swapchain;
     if (!SDL_WaitAndAcquireGPUSwapchainTexture (
@@ -493,6 +493,7 @@ SDL_AppResult render_system (AppState* state) {
         point_idx++;
     }
 
+    *prerender = SDL_GetTicksNS ();
     for (Uint32 i = 0; i < mesh_pool.count; i++) {
         Entity e = mesh_pool.index_to_entity[i];
         MeshComponent* mesh = &((MeshComponent*) mesh_pool.data)[i];
@@ -556,7 +557,9 @@ SDL_AppResult render_system (AppState* state) {
         }
     }
 
+
     // draw queued texts
+    *preui = SDL_GetTicksNS ();
     for (int i = 0; i < ui_pool.count; i++) {
         UIComponent* ui = &((UIComponent*) ui_pool.data)[i];
         if (ui->rect_count == 0) continue;
@@ -645,6 +648,7 @@ SDL_AppResult render_system (AppState* state) {
 
         ui->rect_count = 0;
     }
+    *postrender = SDL_GetTicksNS ();
 
     SDL_EndGPURenderPass (pass);
     SDL_SubmitGPUCommandBuffer (cmd);

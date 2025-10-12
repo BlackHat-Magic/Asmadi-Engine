@@ -4,6 +4,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include <SDL3/SDL_main.h>
 
@@ -21,6 +22,9 @@
 
 Entity torus;
 Entity player;
+Uint64 prerender;
+Uint64 preui;
+Uint64 postrender;
 
 SDL_AppResult SDL_AppEvent (void* appstate, SDL_Event* event) {
     AppState* state = (AppState*) appstate;
@@ -184,6 +188,10 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
 
     state->last_time = SDL_GetPerformanceCounter ();
 
+    prerender = 0;
+    preui = 0;
+    postrender = 0;
+
     *appstate = state;
     SDL_Log ("Started app.");
     return SDL_APP_CONTINUE;
@@ -204,11 +212,21 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
                (float) (SDL_GetPerformanceFrequency ());
     state->last_time = now;
 
+    float render_time_ms = (float) (postrender - prerender) / 1e6;
+    float mesh_time_ms = (float) (preui - prerender) / 1e6;
+    float ui_time_ms = (float) (postrender - preui) / 1e6;
+
     // draw a rectangle
     UIComponent* ui = get_ui (player);
     draw_rectangle (ui, 40.0f, 40.0f, 40.0f, 40.0f, 1.0f, 0.0f, 0.0f, 1.0f);
-    draw_text (ui, state, "hello, world", 40.0f, 40.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-    draw_rectangle (ui, 80.0f, 40.0f, 40.0f, 40.0f, 0.0f, 1.0f, 0.0f, 1.0f);
+
+    char buffer[64];
+    sprintf (buffer, "Mesh render: %.1f", mesh_time_ms);
+    draw_text (ui, state, buffer, 40.0f, 40.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+    sprintf (buffer, "UI render: %.1f", ui_time_ms);
+    draw_text (ui, state, buffer, 40.0f, 60.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+    sprintf (buffer, "Total render: %.1f", render_time_ms);
+    draw_text (ui, state, buffer, 40.0f, 80.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 
     TransformComponent transform = *get_transform (torus);
     vec3 rotation = euler_from_quat (transform.rotation);
@@ -220,7 +238,7 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
     // camera forward vector
     fps_controller_update_system (state, dt);
 
-    render_system (state);
+    render_system (state, &prerender, &preui, &postrender);
 
     return SDL_APP_CONTINUE;
 }

@@ -157,6 +157,6 @@ void remove_point_light (Entity e);
 // Systems
 void fps_controller_event_system (AppState* state, SDL_Event* event);
 void fps_controller_update_system (AppState* state, float dt);
-SDL_AppResult render_system (AppState* state);
+SDL_AppResult render_system (AppState* state, Uint64* prerender, Uint64* preui, Uint64* postrender);
 
 void free_pools (AppState* state);
