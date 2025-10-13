@@ -20,9 +20,6 @@
 
 Entity torus;
 Entity player;
-Uint64 prerender;
-Uint64 preui;
-Uint64 postrender;
 
 typedef struct {
     bool quit;
@@ -32,6 +29,8 @@ typedef struct {
     Uint64 prerender;
     Uint64 preui;
     Uint64 postrender;
+    float frame_rate;
+    Uint64 frame_count;
 } AppState;
 
 SDL_AppResult SDL_AppEvent (void* appstate, SDL_Event* event) {
@@ -202,10 +201,6 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
 
     state->last_time = SDL_GetPerformanceCounter ();
 
-    prerender = 0;
-    preui = 0;
-    postrender = 0;
-
     *appstate = state;
     SDL_Log ("Started app.");
     return SDL_APP_CONTINUE;
@@ -226,15 +221,13 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
                (float) (SDL_GetPerformanceFrequency ());
     state->last_time = now;
 
-    float render_time_ms = (float) (postrender - prerender) / 1e6;
-    float mesh_time_ms = (float) (preui - prerender) / 1e6;
-    float ui_time_ms = (float) (postrender - preui) / 1e6;
-
-    // draw a rectangle
-    UIComponent* ui = get_ui (player);
-    // draw_rectangle (ui, 40.0f, 40.0f, 40.0f, 40.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+    float render_time_ms = (float) (state->postrender - state->prerender) / 1e6;
+    float mesh_time_ms = (float) (state->preui - state->prerender) / 1e6;
+    float ui_time_ms = (float) (state->postrender - state->preui) / 1e6;
+    state->frame_count++;
 
     // draw ui
+    UIComponent* ui = get_ui (player);
     mu_begin (&ui->context);
     if (mu_begin_window (&ui->context, "Test Window", mu_rect (250, 250, 300, 240))) {
         mu_layout_row (&ui->context, 1, (int[]){80}, 0);
@@ -251,6 +244,11 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
     draw_text (ui, state->renderer.device, buffer, 5.0f, 17.0f, 1.0f, 1.0f, 1.0f, 1.0f);
     sprintf (buffer, "Total render: %.1f", render_time_ms);
     draw_text (ui, state->renderer.device, buffer, 5.0f, 29.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+    if (state->frame_count % 60 == 0) {
+        state->frame_rate = 1000.0f / render_time_ms;
+    }
+    sprintf (buffer, "Framerate: %.3f", state->frame_rate);
+    draw_text (ui, state->renderer.device, buffer, 5.0f, 41.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 
     TransformComponent transform = *get_transform (torus);
     vec3 rotation = euler_from_quat (transform.rotation);

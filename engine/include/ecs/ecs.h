@@ -170,7 +170,7 @@ typedef struct {
     SDL_GPUSampler* sampler;
     SDL_GPUTextureFormat format;
 } gpu_renderer;
-bool fps_controller_event_system (SDL_Event* event);
+void fps_controller_event_system (SDL_Event* event);
 void fps_controller_update_system (float dt);
 SDL_AppResult render_system (
     gpu_renderer* renderer,

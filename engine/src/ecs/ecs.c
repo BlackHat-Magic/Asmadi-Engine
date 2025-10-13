@@ -304,7 +304,7 @@ void remove_point_light (Entity e) {
     pool_remove (&point_light_pool, e, sizeof (PointLightComponent));
 }
 
-bool fps_controller_event_system (SDL_Event* event) {
+void fps_controller_event_system (SDL_Event* event) {
     for (Uint32 i = 0; i < fps_controller_pool.count; i++) {
         Entity e = fps_controller_pool.index_to_entity[i];
         FpsCameraControllerComponent* ctrl =
@@ -345,7 +345,7 @@ bool fps_controller_event_system (SDL_Event* event) {
             break;
         }
         default:
-            return false;
+            return;
         }
     }
 }
