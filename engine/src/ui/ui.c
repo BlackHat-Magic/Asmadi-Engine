@@ -1,11 +1,87 @@
-#include <SDL3/SDL_gpu.h>
 #include <stdlib.h>
 
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_gpu.h>
+#include <SDL3/SDL_keycode.h>
 #include <SDL3_ttf/SDL_ttf.h>
 
-#include <ecs/ecs.h>
-#include <material/m_common.h>
+#include <microui.h>
+
 #include <ui/ui.h>
+
+// 0 length for null terminated string
+static int text_width (mu_Font font, const char* string, int len) {
+    if (font == NULL) return 1;
+
+    int w = 0, h = 0;
+    if (!TTF_GetStringSize (font, string, len, &w, &h)) {
+        return (float) w;
+    }
+    SDL_Log ("TTF_GetStringSize failed: %s", SDL_GetError ());
+    return 1;
+}
+
+static int text_height (mu_Font font) {
+    if (font == NULL) return 1;
+
+    return TTF_GetFontLineSkip (font);
+}
+
+// translate SDL mouse buttons to MicroUI buttons
+static const char button_map[256] = {
+    [SDL_BUTTON_LEFT & 0xff] = MU_MOUSE_LEFT,
+    [SDL_BUTTON_RIGHT & 0xff] = MU_MOUSE_RIGHT,
+    [SDL_BUTTON_MIDDLE & 0xff] = MU_MOUSE_MIDDLE
+};
+
+static const char key_map[256] = {
+    [SDLK_LSHIFT & 0xff] = MU_KEY_SHIFT,
+    [SDLK_RSHIFT & 0xff] = MU_KEY_SHIFT,
+    [SDLK_LCTRL & 0xff] = MU_KEY_CTRL,
+    [SDLK_RCTRL & 0xff] = MU_KEY_CTRL,
+    [SDLK_LALT & 0xff] = MU_KEY_ALT,
+    [SDLK_RALT & 0xff] = MU_KEY_ALT,
+    [SDLK_RETURN & 0xff] = MU_KEY_RETURN,
+    [SDLK_BACKSPACE & 0xff] = MU_KEY_BACKSPACE,
+};
+
+void ui_handle_event (SDL_Event* event, UIComponent* ui) {
+    switch (event->type) {
+    case SDL_EVENT_MOUSE_MOTION:
+        mu_input_mousemove (&ui->context, event->motion.x, event->motion.y);
+        break;
+    case SDL_EVENT_MOUSE_WHEEL:
+        mu_input_scroll (&ui->context, event->wheel.x, event->wheel.y);
+        break;
+    case SDL_EVENT_TEXT_INPUT:
+        mu_input_text (&ui->context, event->text.text);
+        break;
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+        Uint32 button = button_map[event->button.button & 0xff];
+        if (button && event->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+            mu_input_mousedown (
+                &ui->context, event->button.x, event->button.y, button
+            );
+        }
+        if (button && event->type == SDL_EVENT_MOUSE_BUTTON_UP) {
+            mu_input_mouseup (
+                &ui->context, event->button.x, event->button.y, button
+            );
+        }
+        break;
+    case SDL_EVENT_KEY_DOWN:
+    case SDL_EVENT_KEY_UP:
+        Uint32 key = key_map[event->key.key & 0xff];
+        if (key && event->type == SDL_EVENT_KEY_DOWN) {
+            mu_input_keydown (&ui->context, key);
+        }
+        if (key && event->type == SDL_EVENT_KEY_UP) {
+            mu_input_keyup (&ui->context, key);
+        }
+        break;
+    }
+}
 
 UIComponent* create_ui_component (
     const AppState* state,
@@ -19,6 +95,11 @@ UIComponent* create_ui_component (
         SDL_Log ("Failed to allocate UI component");
         return NULL;
     }
+
+    // microui
+    mu_init (&ui->context);
+    ui->context.text_width = text_width;
+    ui->context.text_height = text_height;
 
     ui->rects = malloc (sizeof (UIRect) * max_rects);
     if (ui->rects == NULL) {
@@ -234,29 +315,6 @@ void draw_rectangle (
     ui->rect_count++;
 }
 
-float measure_text_width (const UIComponent* ui, const char* utf8) {
-    if (!ui || !ui->font || !utf8) return 0.0f;
-    int w = 0, h = 0;
-    if (!TTF_GetStringSize (ui->font, utf8, 0, &w, &h)) {
-        return (float) w;
-    }
-    SDL_Log ("TTF_GetStringSize failed: %s", SDL_GetError ());
-    return 0.0f;
-}
-
-void measure_text (const UIComponent* ui, const char* utf8, int* w, int* h) {
-    if (w) *w = 0;
-    if (h) *h = 0;
-    if (!ui || !ui->font || !utf8) return;
-    int tw = 0, th = 0;
-    if (!TTF_GetStringSize (ui->font, utf8, 0, &tw, &th)) {
-        if (w) *w = tw;
-        if (h) *h = th;
-    } else {
-        SDL_Log ("TTF_GetStringSize failed: %s", SDL_GetError ());
-    }
-}
-
 static SDL_GPUTexture*
 ui_create_text_texture (const AppState* state, SDL_Surface* abgr) {
     SDL_GPUTextureCreateInfo texinfo = {
@@ -348,7 +406,9 @@ int draw_text (
     if (!tex) return 0;
 
     ui->rects[ui->rect_count++] = (UIRect) {
-        .rect = (SDL_FRect) {x, y, (float) w, (float) h},
+        .rect =
+            (SDL_FRect) {x, y + (float) TTF_GetFontDescent (ui->font) * 2.0f,
+                         (float) w, (float) h},
         .color = (SDL_FColor) {r, g, b, a},
         .texture = tex,
     };

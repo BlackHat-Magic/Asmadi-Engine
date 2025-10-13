@@ -1,5 +1,3 @@
-#include "math/matrix.h"
-#include <SDL3/SDL_gpu.h>
 #define SDL_MAIN_USE_CALLBACKS 1
 
 #include <math.h>
@@ -8,9 +6,9 @@
 
 #include <SDL3/SDL_main.h>
 
-#include <ecs/ecs.h>
+#include <microui.h>
+
 #include <geometry/torus.h>
-#include <material/m_common.h>
 #include <material/phong_material.h>
 #include <ui/ui.h>
 
@@ -156,6 +154,8 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
         return SDL_APP_FAILURE;
     }
     add_ui (player, ui);
+    // ui->context.style->title_height = 30;
+    // ui->context.style->padding = 6;
 
     // torus
     torus = create_entity ();
@@ -218,15 +218,25 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
 
     // draw a rectangle
     UIComponent* ui = get_ui (player);
-    draw_rectangle (ui, 40.0f, 40.0f, 40.0f, 40.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+    // draw_rectangle (ui, 40.0f, 40.0f, 40.0f, 40.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+
+    // draw ui
+    mu_begin (&ui->context);
+    if (mu_begin_window (&ui->context, "Test Window", mu_rect (250, 250, 300, 240))) {
+        mu_layout_row (&ui->context, 1, (int[]){80}, 0);
+        mu_label (&ui->context, "Test label");
+        mu_end_window (&ui->context);
+    }
+    mu_end (&ui->context);
+    // ui_render (state, ui);
 
     char buffer[64];
     sprintf (buffer, "Mesh render: %.1f", mesh_time_ms);
-    draw_text (ui, state, buffer, 40.0f, 40.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+    draw_text (ui, state, buffer, 5.0f, 5.0f, 1.0f, 1.0f, 1.0f, 1.0f);
     sprintf (buffer, "UI render: %.1f", ui_time_ms);
-    draw_text (ui, state, buffer, 40.0f, 60.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+    draw_text (ui, state, buffer, 5.0f, 17.0f, 1.0f, 1.0f, 1.0f, 1.0f);
     sprintf (buffer, "Total render: %.1f", render_time_ms);
-    draw_text (ui, state, buffer, 40.0f, 80.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+    draw_text (ui, state, buffer, 5.0f, 29.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 
     TransformComponent transform = *get_transform (torus);
     vec3 rotation = euler_from_quat (transform.rotation);

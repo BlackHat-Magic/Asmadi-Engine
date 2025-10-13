@@ -3,8 +3,10 @@
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 
-#include "core/appstate.h"
-#include "math/matrix.h"
+#include <microui.h>
+
+#include <core/appstate.h>
+#include <math/matrix.h>
 
 // TODO: More robust max lights
 #define MAX_LIGHTS 64
@@ -89,6 +91,8 @@ typedef struct {
     SDL_GPUShader* vertex;
     SDL_GPUShader* fragment;
     SDL_GPUGraphicsPipeline* pipeline;
+
+    mu_Context context;
 } UIComponent;
 
 // Billboard is a flag (no data)

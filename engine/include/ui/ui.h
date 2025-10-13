@@ -1,5 +1,9 @@
+#pragma once
+
 #include <ecs/ecs.h>
 #include <material/m_common.h>
+
+void ui_handle_event (SDL_Event* event, UIComponent* ui);
 
 UIComponent* create_ui_component (
     const AppState* state,
@@ -32,7 +36,3 @@ int draw_text (
     float b,
     float a
 );
-
-float measure_text_width (const UIComponent* ui, const char* utf8);
-
-void measure_text (const UIComponent* ui, const char* utf8, int* w, int* h);

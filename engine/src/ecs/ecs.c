@@ -1,13 +1,8 @@
-#include <SDL3/SDL_init.h>
 #include <math.h>
 #include <stdlib.h>
-#include <string.h>
-
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_gpu.h>
 
 #include <ecs/ecs.h>
-#include <math/matrix.h>
+#include <ui/ui.h>
 
 static Uint32 next_entity_id = 0;
 
@@ -566,6 +561,58 @@ SDL_AppResult render_system (
     *preui = SDL_GetTicksNS ();
     for (int i = 0; i < ui_pool.count; i++) {
         UIComponent* ui = &((UIComponent*) ui_pool.data)[i];
+
+        bool scissor_enabled = false;
+        mu_Command* mu_command = NULL;
+        while (mu_next_command (&ui->context, &mu_command)) {
+            switch (mu_command->type) {
+            case MU_COMMAND_TEXT:
+                draw_text (
+                    ui, state, mu_command->text.str,
+                    (float) mu_command->text.pos.x,
+                    (float) mu_command->text.pos.y,
+                    (float) mu_command->text.color.r / 255.0f,
+                    (float) mu_command->text.color.g / 255.0f,
+                    (float) mu_command->text.color.b / 255.0f,
+                    (float) mu_command->text.color.a / 255.0f
+                );
+                break;
+            case MU_COMMAND_RECT:
+                draw_rectangle (
+                    ui, (float) mu_command->rect.rect.x,
+                    (float) mu_command->rect.rect.y,
+                    (float) mu_command->rect.rect.w,
+                    (float) mu_command->rect.rect.h,
+                    (float) mu_command->rect.color.r / 255.0f,
+                    (float) mu_command->rect.color.g / 255.0f,
+                    (float) mu_command->rect.color.b / 255.0f,
+                    (float) mu_command->rect.color.a / 255.0f
+                );
+                break;
+            case MU_COMMAND_CLIP:
+                if (mu_command->clip.rect.w <= 0 ||
+                    mu_command->clip.rect.h <= 0) {
+                    if (scissor_enabled) {
+                        SDL_SetGPUScissor (pass, NULL);
+                        scissor_enabled = false;
+                    }
+                } else {
+                    SDL_Rect scissor = {
+                        (int) mu_command->clip.rect.x,
+                        (int) mu_command->clip.rect.y,
+                        (int) mu_command->clip.rect.w,
+                        (int) mu_command->clip.rect.h,
+                    };
+                    SDL_SetGPUScissor (pass, &scissor);
+                    scissor_enabled = true;
+                }
+                break;
+            default:
+                break;
+            }
+        }
+        if (scissor_enabled) SDL_SetGPUScissor (pass, NULL);
+
         if (ui->rect_count == 0) continue;
         SDL_BindGPUGraphicsPipeline (pass, ui->pipeline);
 
