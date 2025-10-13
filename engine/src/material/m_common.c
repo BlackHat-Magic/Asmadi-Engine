@@ -1,10 +1,9 @@
-#include "material/m_common.h"
-
-#include "ecs/ecs.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_filesystem.h>
 #include <SDL3/SDL_gpu.h>
 #include <SDL3_image/SDL_image.h>
+
+#include <material/m_common.h>
 
 // shader loader helper function
 SDL_GPUShader* load_shader (

@@ -1,10 +1,9 @@
-#include "geometry/icosahedron.h"
-
 #include <math.h>
 #include <stdlib.h>
 
-#include "geometry/g_common.h"
-#include "math/matrix.h"
+#include <math/matrix.h>
+#include <geometry/g_common.h>
+#include <geometry/icosahedron.h>
 
 MeshComponent create_icosahedron_mesh (float radius, SDL_GPUDevice* device) {
     MeshComponent null_mesh = (MeshComponent) {0};

@@ -1,11 +1,10 @@
-#include "geometry/octahedron.h"
-
 #include <math.h>
-#include <stdlib.h>
 
-#include "ecs/ecs.h"
-#include "geometry/g_common.h"
-#include "math/matrix.h"
+
+#include <math/matrix.h>
+#include <ecs/ecs.h>
+#include <geometry/g_common.h>
+#include <geometry/octahedron.h>
 
 MeshComponent create_octahedron_mesh (float radius, SDL_GPUDevice* device) {
     MeshComponent null_mesh = (MeshComponent) {0};

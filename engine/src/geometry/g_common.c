@@ -1,11 +1,10 @@
-#include "geometry/g_common.h"
-
 #include <stdlib.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_gpu.h>
 
 #include <math/matrix.h>
+#include <geometry/g_common.h>
 
 // Returns 0 on success, 1 on failure
 int upload_vertices (

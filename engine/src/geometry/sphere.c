@@ -1,9 +1,8 @@
-#include "geometry/sphere.h"
-
 #include <math.h>
 #include <stdlib.h>
 
-#include "geometry/lathe.h"
+#include <geometry/lathe.h>
+#include <geometry/sphere.h>
 
 MeshComponent create_sphere_mesh (
     float radius,

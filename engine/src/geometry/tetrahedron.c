@@ -1,9 +1,7 @@
-#include "geometry/tetrahedron.h"
-
 #include <math.h>
-#include <stdlib.h>
 
-#include "geometry/g_common.h"
+#include <geometry/g_common.h>
+#include <geometry/tetrahedron.h>
 
 MeshComponent create_tetrahedron_mesh (float radius, SDL_GPUDevice* device) {
     MeshComponent null_mesh = (MeshComponent) {0};

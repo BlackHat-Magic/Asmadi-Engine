@@ -3,7 +3,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "geometry/g_common.h"
+#include <geometry/g_common.h>
 
 MeshComponent create_ring_mesh (
     float inner_radius,

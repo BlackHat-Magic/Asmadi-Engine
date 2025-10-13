@@ -1,8 +1,7 @@
-#include "geometry/plane.h"
-
 #include <stdlib.h>
 
-#include "geometry/g_common.h"
+#include <geometry/g_common.h>
+#include <geometry/plane.h>
 
 MeshComponent create_plane_mesh (
     float width,

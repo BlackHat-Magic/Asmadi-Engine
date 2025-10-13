@@ -1,7 +1,6 @@
-#include "geometry/box.h"
-
-#include "ecs/ecs.h"
-#include "geometry/g_common.h"
+#include <ecs/ecs.h>
+#include <geometry/g_common.h>
+#include <geometry/box.h>
 
 MeshComponent
 create_box_mesh (float l, float w, float h, SDL_GPUDevice* device) {
