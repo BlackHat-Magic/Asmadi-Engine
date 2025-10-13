@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ecs/ecs.h"
-#include "math/matrix.h"
+#include <ecs/ecs.h>
+#include <math/matrix.h>
 
 MeshComponent create_lathe_mesh (
     vec2* path,

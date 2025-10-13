@@ -1,9 +1,8 @@
-#include "geometry/ring.h"
-
 #include <math.h>
 #include <stdlib.h>
 
-#include "geometry/g_common.h"
+#include <geometry/g_common.h>
+#include <geometry/ring.h>
 
 MeshComponent create_ring_mesh (
     float inner_radius,

@@ -1,8 +1,8 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "ecs/ecs.h"
-#include "geometry/lathe.h"
+#include <ecs/ecs.h>
+#include <geometry/lathe.h>
 
 MeshComponent create_capsule_mesh (
     float radius,

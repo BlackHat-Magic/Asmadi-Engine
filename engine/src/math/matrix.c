@@ -1,8 +1,7 @@
-#include "math/matrix.h"
-
 #include <math.h>
 #include <stdlib.h>
-#include <time.h>
+
+#include <math/matrix.h>
 
 // VEC2
 vec2 vec2_add (vec2 a, vec2 b) {

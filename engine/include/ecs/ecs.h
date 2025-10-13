@@ -5,7 +5,6 @@
 
 #include <microui.h>
 
-#include <core/appstate.h>
 #include <math/matrix.h>
 
 // TODO: More robust max lights
@@ -103,7 +102,7 @@ typedef vec4 PointLightComponent; // position is another component
 
 // ECS API
 Entity create_entity (void);
-void destroy_entity (AppState* state, Entity e);
+void destroy_entity (SDL_GPUDevice* device, Entity e);
 
 // Transforms
 void add_transform (Entity e, vec3 pos, vec3 rot, vec3 scale);
@@ -115,13 +114,16 @@ void remove_transform (Entity e);
 void add_mesh (Entity e, MeshComponent mesh);
 MeshComponent* get_mesh (Entity e);
 bool has_mesh (Entity e);
-void remove_mesh (AppState* state, Entity e); // state for device release
+void remove_mesh (SDL_GPUDevice* device, Entity e); // state for device release
 
 // Materials
 void add_material (Entity e, MaterialComponent material);
 MaterialComponent* get_material (Entity e);
 bool has_material (Entity e);
-void remove_material (AppState* state, Entity e); // state for device release
+void remove_material (
+    SDL_GPUDevice* device,
+    Entity e
+); // state for device release
 
 // Cameras
 void add_camera (Entity e, float fov, float near_clip, float far_clip);
@@ -159,13 +161,26 @@ bool has_point_light (Entity e);
 void remove_point_light (Entity e);
 
 // Systems
-void fps_controller_event_system (AppState* state, SDL_Event* event);
-void fps_controller_update_system (AppState* state, float dt);
+typedef struct {
+    SDL_GPUDevice* device;
+    SDL_Window* window;
+    Uint32 width;
+    Uint32 height;
+    Uint32 dwidth;
+    Uint32 dheight;
+    SDL_GPUTexture* depth_texture;
+    SDL_GPUTexture* white_texture;
+    SDL_GPUSampler* sampler;
+    SDL_GPUTextureFormat format;
+} gpu_renderer;
+void fps_controller_event_system (SDL_Event* event);
+void fps_controller_update_system (float dt);
 SDL_AppResult render_system (
-    AppState* state,
+    gpu_renderer* renderer,
+    Entity cam,
     Uint64* prerender,
     Uint64* preui,
     Uint64* postrender
 );
 
-void free_pools (AppState* state);
+void free_pools (SDL_GPUDevice* device);

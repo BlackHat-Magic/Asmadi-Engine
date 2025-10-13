@@ -1,4 +1,4 @@
-#include "math/matrix.h"
+#include <math/matrix.h>
 #define SDL_MAIN_USE_CALLBACKS 1
 
 #include <stdlib.h>
