@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ecs/ecs.h"
+#include <ecs/ecs.h>
 
 MeshComponent create_ring_mesh (
     float inner_radius,

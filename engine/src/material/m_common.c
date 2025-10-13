@@ -230,17 +230,16 @@ SDL_GPUTexture* create_white_texture (SDL_GPUDevice* device) {
 
 // returns 0 on success 1 on failure
 int set_vertex_shader (
-    SDL_GPUDevice* device,
+    gpu_renderer* renderer,
     MaterialComponent* mat,
-    const char* filepath,
-    SDL_GPUTextureFormat swapchain_format
+    const char* filepath
 ) {
     mat->vertex_shader =
-        load_shader (device, filepath, SDL_GPU_SHADERSTAGE_VERTEX, 0, 1, 0, 0);
+        load_shader (renderer->device, filepath, SDL_GPU_SHADERSTAGE_VERTEX, 0, 1, 0, 0);
     if (mat->vertex_shader == NULL)
         return 1; // logging handled in load_shader()
     if (mat->vertex_shader && mat->fragment_shader) {
-        int pipe_failed = build_pipeline (device, mat, swapchain_format);
+        int pipe_failed = build_pipeline (renderer->device, mat, renderer->format);
         if (pipe_failed) return 1; // logging handled in build_pipeline()
     }
     return 0;
@@ -248,21 +247,20 @@ int set_vertex_shader (
 
 // returns 0 on success 1 on failure
 int set_fragment_shader (
-    SDL_GPUDevice* device,
+    gpu_renderer* renderer,
     MaterialComponent* mat,
     const char* filepath,
-    SDL_GPUTextureFormat swapchain_format,
     Uint32 sampler_count,
     Uint32 uniform_buffer_count
 ) {
     mat->fragment_shader = load_shader (
-        device, filepath, SDL_GPU_SHADERSTAGE_FRAGMENT, sampler_count,
+        renderer->device, filepath, SDL_GPU_SHADERSTAGE_FRAGMENT, sampler_count,
         uniform_buffer_count, 0, 0
     );
     if (mat->fragment_shader == NULL)
         return 1; // logging handled in load_shader()
     if (mat->vertex_shader && mat->fragment_shader) {
-        int pipe_failed = build_pipeline (device, mat, swapchain_format);
+        int pipe_failed = build_pipeline (renderer->device, mat, renderer->format);
         if (pipe_failed) return 1; // logging handled in build_pipeline()
     }
     return 0;

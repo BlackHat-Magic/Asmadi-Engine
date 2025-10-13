@@ -2,7 +2,7 @@
 #include <material/m_common.h>
 
 MaterialComponent
-create_phong_material (vec3 color, MaterialSide side, AppState* state) {
+create_phong_material (vec3 color, MaterialSide side, gpu_renderer* renderer) {
     MaterialComponent mat = {
         .color = color,
         .texture = NULL,
@@ -13,8 +13,7 @@ create_phong_material (vec3 color, MaterialSide side, AppState* state) {
 
     // TODO: communicate failure to caller
     int vert_failed = set_vertex_shader (
-        state->device, &mat, "shaders/phong_material.vert.spv",
-        state->swapchain_format
+        renderer, &mat, "shaders/phong_material.vert.spv"
     );
     if (vert_failed) {
         mat.vertex_shader = NULL;
@@ -22,8 +21,8 @@ create_phong_material (vec3 color, MaterialSide side, AppState* state) {
     }
 
     int frag_failed = set_fragment_shader (
-        state->device, &mat, "shaders/phong_material.frag.spv",
-        state->swapchain_format, 1, 1
+        renderer, &mat, "shaders/phong_material.frag.spv",
+        1, 1
     );
     if (frag_failed) mat.fragment_shader = NULL;
 

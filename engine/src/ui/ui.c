@@ -84,7 +84,7 @@ void ui_handle_event (SDL_Event* event, UIComponent* ui) {
 }
 
 UIComponent* create_ui_component (
-    const AppState* state,
+    const gpu_renderer* renderer,
     const Uint32 max_rects,
     const Uint32 max_texts,
     const char* font_path,
@@ -111,7 +111,7 @@ UIComponent* create_ui_component (
     ui->max_rects = max_rects;
 
     // white texture
-    ui->white_texture = create_white_texture (state->device);
+    ui->white_texture = create_white_texture (renderer->device);
     if (ui->white_texture == NULL) {
         free (ui->rects);
         free (ui);
@@ -129,10 +129,10 @@ UIComponent* create_ui_component (
         .max_anisotropy = 1.0f,
         .enable_anisotropy = false
     };
-    ui->sampler = SDL_CreateGPUSampler (state->device, &sampler_info);
+    ui->sampler = SDL_CreateGPUSampler (renderer->device, &sampler_info);
     if (ui->sampler == NULL) {
         free (ui->rects);
-        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
+        SDL_ReleaseGPUTexture (renderer->device, ui->white_texture);
         free (ui);
         SDL_Log ("Failed to create sampler: %s", SDL_GetError ());
         return NULL;
@@ -141,7 +141,7 @@ UIComponent* create_ui_component (
     ui->font = TTF_OpenFont (font_path, ptsize);
     if (ui->font == NULL) {
         free (ui->rects);
-        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
+        SDL_ReleaseGPUTexture (renderer->device, ui->white_texture);
         SDL_Log ("Failed to create UI font: %s", SDL_GetError ());
         return NULL;
     }
@@ -154,11 +154,11 @@ UIComponent* create_ui_component (
         .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
         .size = vsize,
     };
-    ui->vbo = SDL_CreateGPUBuffer (state->device, &vinfo);
+    ui->vbo = SDL_CreateGPUBuffer (renderer->device, &vinfo);
     if (ui->vbo == NULL) {
         free (ui->rects);
         TTF_CloseFont (ui->font);
-        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
+        SDL_ReleaseGPUTexture (renderer->device, ui->white_texture);
         free (ui);
         SDL_Log ("Failed to create UI vertex buffer: %s", SDL_GetError ());
         return NULL;
@@ -171,12 +171,12 @@ UIComponent* create_ui_component (
         .usage = SDL_GPU_BUFFERUSAGE_INDEX,
         .size = isize
     };
-    ui->ibo = SDL_CreateGPUBuffer (state->device, &iinfo);
+    ui->ibo = SDL_CreateGPUBuffer (renderer->device, &iinfo);
     if (ui->ibo == NULL) {
         free (ui->rects);
         TTF_CloseFont (ui->font);
-        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
-        SDL_ReleaseGPUBuffer (state->device, ui->vbo);
+        SDL_ReleaseGPUTexture (renderer->device, ui->white_texture);
+        SDL_ReleaseGPUBuffer (renderer->device, ui->vbo);
         free (ui);
         SDL_Log ("Failed to create UI index buffer: %s", SDL_GetError ());
         return NULL;
@@ -184,29 +184,29 @@ UIComponent* create_ui_component (
     ui->ibo_size = isize;
 
     ui->vertex = load_shader (
-        state->device, "shaders/ui.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX, 0, 0,
+        renderer->device, "shaders/ui.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX, 0, 0,
         0, 0
     );
     if (ui->vertex == NULL) {
         free (ui->rects);
         TTF_CloseFont (ui->font);
-        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
-        SDL_ReleaseGPUBuffer (state->device, ui->vbo);
-        SDL_ReleaseGPUBuffer (state->device, ui->ibo);
+        SDL_ReleaseGPUTexture (renderer->device, ui->white_texture);
+        SDL_ReleaseGPUBuffer (renderer->device, ui->vbo);
+        SDL_ReleaseGPUBuffer (renderer->device, ui->ibo);
         free (ui);
         return NULL;
     }
     ui->fragment = load_shader (
-        state->device, "shaders/ui.frag.spv", SDL_GPU_SHADERSTAGE_FRAGMENT, 1,
+        renderer->device, "shaders/ui.frag.spv", SDL_GPU_SHADERSTAGE_FRAGMENT, 1,
         0, 0, 0
     );
     if (ui->fragment == NULL) {
         free (ui->rects);
         TTF_CloseFont (ui->font);
-        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
-        SDL_ReleaseGPUBuffer (state->device, ui->vbo);
-        SDL_ReleaseGPUBuffer (state->device, ui->ibo);
-        SDL_ReleaseGPUShader (state->device, ui->vertex);
+        SDL_ReleaseGPUTexture (renderer->device, ui->white_texture);
+        SDL_ReleaseGPUBuffer (renderer->device, ui->vbo);
+        SDL_ReleaseGPUBuffer (renderer->device, ui->ibo);
+        SDL_ReleaseGPUShader (renderer->device, ui->vertex);
         free (ui);
         return NULL;
     }
@@ -217,7 +217,7 @@ UIComponent* create_ui_component (
                 .num_color_targets = 1,
                 .color_target_descriptions =
                     (SDL_GPUColorTargetDescription[]) {
-                        {.format = state->swapchain_format,
+                        {.format = renderer->format,
                          .blend_state =
                              {
                                  .enable_blend = true,
@@ -278,15 +278,15 @@ UIComponent* create_ui_component (
             .compare_op = SDL_GPU_COMPAREOP_ALWAYS,
         }
     };
-    ui->pipeline = SDL_CreateGPUGraphicsPipeline (state->device, &info);
+    ui->pipeline = SDL_CreateGPUGraphicsPipeline (renderer->device, &info);
     if (ui->pipeline == NULL) {
         free (ui->rects);
         TTF_CloseFont (ui->font);
-        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
-        SDL_ReleaseGPUBuffer (state->device, ui->vbo);
-        SDL_ReleaseGPUBuffer (state->device, ui->ibo);
-        SDL_ReleaseGPUShader (state->device, ui->vertex);
-        SDL_ReleaseGPUShader (state->device, ui->fragment);
+        SDL_ReleaseGPUTexture (renderer->device, ui->white_texture);
+        SDL_ReleaseGPUBuffer (renderer->device, ui->vbo);
+        SDL_ReleaseGPUBuffer (renderer->device, ui->ibo);
+        SDL_ReleaseGPUShader (renderer->device, ui->vertex);
+        SDL_ReleaseGPUShader (renderer->device, ui->fragment);
         free (ui);
         SDL_Log ("Unable to create UI graphics pipeline: %s", SDL_GetError ());
         return NULL;
@@ -316,7 +316,7 @@ void draw_rectangle (
 }
 
 static SDL_GPUTexture*
-ui_create_text_texture (const AppState* state, SDL_Surface* abgr) {
+ui_create_text_texture (SDL_GPUDevice* device, SDL_Surface* abgr) {
     SDL_GPUTextureCreateInfo texinfo = {
         .type = SDL_GPU_TEXTURETYPE_2D,
         .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
@@ -326,7 +326,7 @@ ui_create_text_texture (const AppState* state, SDL_Surface* abgr) {
         .num_levels = 1,
         .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
     };
-    SDL_GPUTexture* tex = SDL_CreateGPUTexture (state->device, &texinfo);
+    SDL_GPUTexture* tex = SDL_CreateGPUTexture (device, &texinfo);
     if (!tex) {
         SDL_Log ("UI text texture create failed: %s", SDL_GetError ());
         return NULL;
@@ -336,23 +336,23 @@ ui_create_text_texture (const AppState* state, SDL_Surface* abgr) {
         .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
     };
     SDL_GPUTransferBuffer* tbuf =
-        SDL_CreateGPUTransferBuffer (state->device, &tbinfo);
+        SDL_CreateGPUTransferBuffer (device, &tbinfo);
     if (!tbuf) {
-        SDL_ReleaseGPUTexture (state->device, tex);
+        SDL_ReleaseGPUTexture (device, tex);
         SDL_Log ("UI text transfer buffer create failed: %s", SDL_GetError ());
         return NULL;
     }
-    void* map = SDL_MapGPUTransferBuffer (state->device, tbuf, false);
+    void* map = SDL_MapGPUTransferBuffer (device, tbuf, false);
     if (!map) {
-        SDL_ReleaseGPUTransferBuffer (state->device, tbuf);
-        SDL_ReleaseGPUTexture (state->device, tex);
+        SDL_ReleaseGPUTransferBuffer (device, tbuf);
+        SDL_ReleaseGPUTexture (device, tex);
         SDL_Log ("UI text transfer buffer map failed: %s", SDL_GetError ());
         return NULL;
     }
     memcpy (map, abgr->pixels, tbinfo.size);
-    SDL_UnmapGPUTransferBuffer (state->device, tbuf);
+    SDL_UnmapGPUTransferBuffer (device, tbuf);
 
-    SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer (state->device);
+    SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer (device);
     SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass (cmd);
     SDL_GPUTextureTransferInfo src = {
         .transfer_buffer = tbuf,
@@ -365,13 +365,13 @@ ui_create_text_texture (const AppState* state, SDL_Surface* abgr) {
     SDL_UploadToGPUTexture (copy, &src, &dst, false);
     SDL_EndGPUCopyPass (copy);
     SDL_SubmitGPUCommandBuffer (cmd);
-    SDL_ReleaseGPUTransferBuffer (state->device, tbuf);
+    SDL_ReleaseGPUTransferBuffer (device, tbuf);
     return tex;
 }
 
 int draw_text (
     UIComponent* ui,
-    const AppState* state,
+    SDL_GPUDevice* device,
     const char* utf8,
     float x,
     float y,
@@ -399,7 +399,7 @@ int draw_text (
         return 0;
     }
 
-    SDL_GPUTexture* tex = ui_create_text_texture (state, abgr);
+    SDL_GPUTexture* tex = ui_create_text_texture (device, abgr);
     int w = abgr->w;
     int h = abgr->h;
     SDL_DestroySurface (abgr);

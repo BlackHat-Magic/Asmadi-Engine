@@ -6,7 +6,7 @@
 void ui_handle_event (SDL_Event* event, UIComponent* ui);
 
 UIComponent* create_ui_component (
-    const AppState* state,
+    const gpu_renderer* renderer,
     const Uint32 max_rects,
     const Uint32 max_texts,
     const char* font_path,
@@ -27,7 +27,7 @@ void draw_rectangle (
 
 int draw_text (
     UIComponent* ui,
-    const AppState* state,
+    SDL_GPUDevice* device,
     const char* utf8,
     float x,
     float y,

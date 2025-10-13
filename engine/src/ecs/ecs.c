@@ -128,10 +128,10 @@ Entity create_entity (void) {
     return next_entity_id++;
 }
 
-void destroy_entity (AppState* state, Entity e) {
+void destroy_entity (SDL_GPUDevice* device, Entity e) {
     remove_transform (e);
-    remove_mesh (state, e);
-    remove_material (state, e);
+    remove_mesh (device, e);
+    remove_material (device, e);
     remove_camera (e);
     remove_fps_controller (e);
     remove_billboard (e);
@@ -167,13 +167,13 @@ MeshComponent* get_mesh (Entity e) {
 bool has_mesh (Entity e) {
     return pool_has (&mesh_pool, e);
 }
-void remove_mesh (AppState* state, Entity e) {
+void remove_mesh (SDL_GPUDevice* device, Entity e) {
     MeshComponent* mesh = get_mesh (e);
     if (mesh) {
         if (mesh->vertex_buffer)
-            SDL_ReleaseGPUBuffer (state->device, mesh->vertex_buffer);
+            SDL_ReleaseGPUBuffer (device, mesh->vertex_buffer);
         if (mesh->index_buffer)
-            SDL_ReleaseGPUBuffer (state->device, mesh->index_buffer);
+            SDL_ReleaseGPUBuffer (device, mesh->index_buffer);
     }
     pool_remove (&mesh_pool, e, sizeof (MeshComponent));
 }
@@ -190,16 +190,16 @@ MaterialComponent* get_material (Entity e) {
 bool has_material (Entity e) {
     return pool_has (&material_pool, e);
 }
-void remove_material (AppState* state, Entity e) {
+void remove_material (SDL_GPUDevice* device, Entity e) {
     MaterialComponent* mat = get_material (e);
     if (mat) {
-        if (mat->texture) SDL_ReleaseGPUTexture (state->device, mat->texture);
+        if (mat->texture) SDL_ReleaseGPUTexture (device, mat->texture);
         if (mat->pipeline)
-            SDL_ReleaseGPUGraphicsPipeline (state->device, mat->pipeline);
+            SDL_ReleaseGPUGraphicsPipeline (device, mat->pipeline);
         if (mat->vertex_shader)
-            SDL_ReleaseGPUShader (state->device, mat->vertex_shader);
+            SDL_ReleaseGPUShader (device, mat->vertex_shader);
         if (mat->fragment_shader)
-            SDL_ReleaseGPUShader (state->device, mat->fragment_shader);
+            SDL_ReleaseGPUShader (device, mat->fragment_shader);
     }
     pool_remove (&material_pool, e, sizeof (MaterialComponent));
 }
@@ -304,7 +304,7 @@ void remove_point_light (Entity e) {
     pool_remove (&point_light_pool, e, sizeof (PointLightComponent));
 }
 
-void fps_controller_event_system (AppState* state, SDL_Event* event) {
+bool fps_controller_event_system (SDL_Event* event) {
     for (Uint32 i = 0; i < fps_controller_pool.count; i++) {
         Entity e = fps_controller_pool.index_to_entity[i];
         FpsCameraControllerComponent* ctrl =
@@ -344,14 +344,13 @@ void fps_controller_event_system (AppState* state, SDL_Event* event) {
             }
             break;
         }
-        case SDL_EVENT_KEY_DOWN:
-            if (event->key.key == SDLK_ESCAPE) state->quit = true;
-            break;
+        default:
+            return false;
         }
     }
 }
 
-void fps_controller_update_system (AppState* state, float dt) {
+void fps_controller_update_system (float dt) {
     for (Uint32 i = 0; i < fps_controller_pool.count; i++) {
         Entity e = fps_controller_pool.index_to_entity[i];
         FpsCameraControllerComponent* ctrl =
@@ -379,15 +378,16 @@ void fps_controller_update_system (AppState* state, float dt) {
 }
 
 SDL_AppResult render_system (
-    AppState* state,
+    gpu_renderer* renderer,
+    Entity cam,
     Uint64* prerender,
     Uint64* preui,
     Uint64* postrender
 ) {
-    SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer (state->device);
+    SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer (renderer->device);
     SDL_GPUTexture* swapchain;
     if (!SDL_WaitAndAcquireGPUSwapchainTexture (
-            cmd, state->window, &swapchain, &state->width, &state->height
+            cmd, renderer->window, &swapchain, &renderer->width, &renderer->height
         )) {
         SDL_Log ("Failed to get swapchain texture: %s", SDL_GetError ());
         return SDL_APP_FAILURE;
@@ -398,30 +398,29 @@ SDL_AppResult render_system (
         return SDL_APP_FAILURE;
     }
 
-    if (state->dwidth != state->width || state->dheight != state->height) {
-        if (state->depth_texture)
-            SDL_ReleaseGPUTexture (state->device, state->depth_texture);
+    if (renderer->dwidth != renderer->width || renderer->dheight != renderer->height) {
+        if (renderer->depth_texture)
+            SDL_ReleaseGPUTexture (renderer->device, renderer->depth_texture);
         SDL_GPUTextureCreateInfo depth_info = {
             .type = SDL_GPU_TEXTURETYPE_2D,
             .format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
-            .width = state->width,
-            .height = state->height,
+            .width = renderer->width,
+            .height = renderer->height,
             .layer_count_or_depth = 1,
             .num_levels = 1,
             .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET
         };
-        state->depth_texture =
-            SDL_CreateGPUTexture (state->device, &depth_info);
-        if (!state->depth_texture) {
+        renderer->depth_texture =
+            SDL_CreateGPUTexture (renderer->device, &depth_info);
+        if (!renderer->depth_texture) {
             SDL_Log ("Failed to recreate depth texture: %s", SDL_GetError ());
             SDL_SubmitGPUCommandBuffer (cmd);
             return SDL_APP_FAILURE;
         }
-        state->dwidth = state->width;
-        state->dheight = state->height;
+        renderer->dwidth = renderer->width;
+        renderer->dheight = renderer->height;
     }
 
-    Entity cam = state->camera_entity;
     TransformComponent* cam_trans = get_transform (cam);
     CameraComponent* cam_comp = get_camera (cam);
     if (!cam_trans || !cam_comp) {
@@ -437,7 +436,7 @@ SDL_AppResult render_system (
     mat4_translate (view, vec3_scale (cam_trans->position, -1.0f));
 
     mat4 proj;
-    float aspect = (float) state->width / (float) state->height;
+    float aspect = (float) renderer->width / (float) renderer->height;
     mat4_perspective (
         proj, cam_comp->fov * (float) M_PI / 180.0f, aspect,
         cam_comp->near_clip, cam_comp->far_clip
@@ -451,7 +450,7 @@ SDL_AppResult render_system (
     };
 
     SDL_GPUDepthStencilTargetInfo depth_target_info = {
-        .texture = state->depth_texture,
+        .texture = renderer->depth_texture,
         .load_op = SDL_GPU_LOADOP_CLEAR,
         .store_op = SDL_GPU_STOREOP_STORE,
         .cycle = false,
@@ -461,7 +460,7 @@ SDL_AppResult render_system (
     SDL_GPURenderPass* pass =
         SDL_BeginGPURenderPass (cmd, &color_target_info, 1, &depth_target_info);
     SDL_GPUViewport viewport = {
-        0.0f, 0.0f, (float) state->width, (float) state->height, 0.0f, 1.0f
+        0.0f, 0.0f, (float) renderer->width, (float) renderer->height, 0.0f, 1.0f
     };
     SDL_SetGPUViewport (pass, &viewport);
 
@@ -534,8 +533,8 @@ SDL_AppResult render_system (
         SDL_PushGPUFragmentUniformData (cmd, 0, &ubo, sizeof (UBOData));
 
         SDL_GPUTextureSamplerBinding tex_bind = {
-            .texture = mat->texture ? mat->texture : state->white_texture,
-            .sampler = state->sampler
+            .texture = mat->texture ? mat->texture : renderer->white_texture,
+            .sampler = renderer->sampler
         };
         SDL_BindGPUFragmentSamplers (pass, 0, &tex_bind, 1);
 
@@ -568,7 +567,7 @@ SDL_AppResult render_system (
             switch (mu_command->type) {
             case MU_COMMAND_TEXT:
                 draw_text (
-                    ui, state, mu_command->text.str,
+                    ui, renderer->device, mu_command->text.str,
                     (float) mu_command->text.pos.x,
                     (float) mu_command->text.pos.y,
                     (float) mu_command->text.color.r / 255.0f,
@@ -619,8 +618,8 @@ SDL_AppResult render_system (
         for (int r = 0; r < ui->rect_count; r++) {
             UIRect* rect = &ui->rects[r];
 
-            float rx = (float) state->width;
-            float ry = (float) state->height;
+            float rx = (float) renderer->width;
+            float ry = (float) renderer->height;
             float x1 = rect->rect.x;
             float y1 = rect->rect.y;
             float x2 = rect->rect.x + rect->rect.w;
@@ -642,20 +641,20 @@ SDL_AppResult render_system (
                 .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
             };
             SDL_GPUTransferBuffer* vtbuf =
-                SDL_CreateGPUTransferBuffer (state->device, &vtinfo);
-            void* vmap = SDL_MapGPUTransferBuffer (state->device, vtbuf, false);
+                SDL_CreateGPUTransferBuffer (renderer->device, &vtinfo);
+            void* vmap = SDL_MapGPUTransferBuffer (renderer->device, vtbuf, false);
             memcpy (vmap, verts, vsize);
-            SDL_UnmapGPUTransferBuffer (state->device, vtbuf);
+            SDL_UnmapGPUTransferBuffer (renderer->device, vtbuf);
 
             SDL_GPUTransferBufferCreateInfo itinfo = {
                 .size = isize,
                 .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
             };
             SDL_GPUTransferBuffer* itbuf =
-                SDL_CreateGPUTransferBuffer (state->device, &itinfo);
-            void* imap = SDL_MapGPUTransferBuffer (state->device, itbuf, false);
+                SDL_CreateGPUTransferBuffer (renderer->device, &itinfo);
+            void* imap = SDL_MapGPUTransferBuffer (renderer->device, itbuf, false);
             memcpy (imap, inds, isize);
-            SDL_UnmapGPUTransferBuffer (state->device, itbuf);
+            SDL_UnmapGPUTransferBuffer (renderer->device, itbuf);
 
             SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass (cmd);
             SDL_GPUTransferBufferLocation vsrc = {
@@ -673,8 +672,8 @@ SDL_AppResult render_system (
                 {.buffer = ui->ibo, .offset = 0, .size = isize};
             SDL_UploadToGPUBuffer (copy, &isrc, &idst, false);
             SDL_EndGPUCopyPass (copy);
-            SDL_ReleaseGPUTransferBuffer (state->device, vtbuf);
-            SDL_ReleaseGPUTransferBuffer (state->device, itbuf);
+            SDL_ReleaseGPUTransferBuffer (renderer->device, vtbuf);
+            SDL_ReleaseGPUTransferBuffer (renderer->device, itbuf);
 
             SDL_GPUTextureSamplerBinding tex_bind = {
                 .texture = rect->texture,
@@ -692,7 +691,7 @@ SDL_AppResult render_system (
 
             // If this was a text texture, release it now (keep white texture)
             if (rect->texture != ui->white_texture) {
-                SDL_ReleaseGPUTexture (state->device, rect->texture);
+                SDL_ReleaseGPUTexture (renderer->device, rect->texture);
                 rect->texture = ui->white_texture;
             }
         }
@@ -706,10 +705,10 @@ SDL_AppResult render_system (
     return SDL_APP_CONTINUE;
 }
 
-void free_pools (AppState* state) {
+void free_pools (SDL_GPUDevice* device) {
     // Destroy all entities to release resources (e.g., GPU buffers)
     for (Uint32 i = 0; i < next_entity_id; i++) {
-        destroy_entity (state, i);
+        destroy_entity (device, i);
     }
 
     // Free pool allocations
