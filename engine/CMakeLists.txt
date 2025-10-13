@@ -22,6 +22,7 @@ add_library(engine STATIC
     src/material/basic_material.c
     src/material/phong_material.c
     src/math/matrix.c
+    src/ui/ui.c
 )
 
 # Includes (public for linking targets)
@@ -35,6 +36,7 @@ target_include_directories(engine PUBLIC
 target_link_libraries(engine PRIVATE
     SDL3::SDL3
     SDL3_image::SDL3_image
+    SDL3_ttf::SDL3_ttf
     m
 )
 
@@ -51,8 +53,8 @@ if(COMPILE_SHADERS AND GLSLANG_VALIDATOR)
         basic_material.frag
         phong_material.vert
         phong_material.frag
-        ui_text.vert
-        ui_text.frag
+        ui.vert
+        ui.frag
     )
 
     foreach(SHADER ${SHADERS})

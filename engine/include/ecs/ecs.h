@@ -1,9 +1,12 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
 
-#include "core/appstate.h"
-#include "math/matrix.h"
+#include <microui.h>
+
+#include <core/appstate.h>
+#include <math/matrix.h>
 
 // TODO: More robust max lights
 #define MAX_LIGHTS 64
@@ -61,6 +64,37 @@ typedef struct {
     float move_speed;
 } FpsCameraControllerComponent;
 
+typedef struct {
+    SDL_FRect rect;
+    SDL_FColor color;
+    SDL_GPUTexture* texture;
+} UIRect;
+
+typedef struct {
+    // rectangle
+    UIRect* rects;
+    Uint32 rect_count;
+    Uint32 max_rects;
+    SDL_GPUTexture* white_texture;
+    SDL_GPUSampler* sampler;
+
+    // text
+    TTF_Font* font;
+
+    // GPU buffers
+    SDL_GPUBuffer* vbo;
+    Uint32 vbo_size;
+    SDL_GPUBuffer* ibo;
+    Uint32 ibo_size;
+
+    // uh
+    SDL_GPUShader* vertex;
+    SDL_GPUShader* fragment;
+    SDL_GPUGraphicsPipeline* pipeline;
+
+    mu_Context context;
+} UIComponent;
+
 // Billboard is a flag (no data)
 
 typedef vec4 AmbientLightComponent;
@@ -106,6 +140,12 @@ void add_billboard (Entity e);
 bool has_billboard (Entity e);
 void remove_billboard (Entity e);
 
+// UI
+void add_ui (Entity e, UIComponent* ui);
+bool has_ui (Entity e);
+UIComponent* get_ui (Entity e);
+void remove_ui (Entity e);
+
 // Ambient Lights
 void add_ambient_light (Entity e, vec3 rgb, float brightness);
 AmbientLightComponent* get_ambient_light (Entity e);
@@ -121,6 +161,11 @@ void remove_point_light (Entity e);
 // Systems
 void fps_controller_event_system (AppState* state, SDL_Event* event);
 void fps_controller_update_system (AppState* state, float dt);
-SDL_AppResult render_system (AppState* state);
+SDL_AppResult render_system (
+    AppState* state,
+    Uint64* prerender,
+    Uint64* preui,
+    Uint64* postrender
+);
 
 void free_pools (AppState* state);

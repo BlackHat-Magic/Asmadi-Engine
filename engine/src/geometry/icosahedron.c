@@ -50,14 +50,14 @@ MeshComponent create_icosahedron_mesh (float radius, SDL_GPUDevice* device) {
     }
 
     Uint16 indices[] = {
-        11, 5,  0, 5, 1,  0,  1,  7,  0,  7, 10, 0, 10, 11, 0, 5, 9,
-        1,  11, 4, 5, 10, 2,  11, 10, 2,  7, // Fixed from original (was 10, 2,
-                                             // 11 but repeated; assuming
-                                             // correction based on standard
-                                             // icosahedron)
-        10, 6,  7,                           // Adjusted for correct triangles
-        1,  8,  7, 9, 4,  3,  4,  2,  3,  2, 6,  3, 6,  8,  3, 8, 9,
-        3,  9,  5, 4, 4,  11, 2,  2,  10, 6, 6,  7, 8,  8,  1, 9
+        11, 5, 0, 5, 1, 0, 1, 7, 0, 7, 10, 0, 10, 11, 0, 5, 9, 1, 11, 4, 5, 10,
+        2, 11, 10, 2, 7, // Fixed from original (was 10, 2,
+                         // 11 but repeated; assuming
+                         // correction based on standard
+                         // icosahedron)
+        10, 6, 7,        // Adjusted for correct triangles
+        1, 8, 7, 9, 4, 3, 4, 2, 3, 2, 6, 3, 6, 8, 3, 8, 9, 3, 9, 5, 4, 4, 11, 2,
+        2, 10, 6, 6, 7, 8, 8, 1, 9
     };
 
     // Note: The indices in the original code seem incomplete or erroneous (only

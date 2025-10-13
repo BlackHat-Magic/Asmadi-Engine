@@ -1,12 +1,8 @@
-#include <stdlib.h>
-#include <string.h>
-
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_gpu.h>
-
-#include "ecs/ecs.h"
-#include "math/matrix.h"
 #include <math.h>
+#include <stdlib.h>
+
+#include <ecs/ecs.h>
+#include <ui/ui.h>
 
 static Uint32 next_entity_id = 0;
 
@@ -27,6 +23,7 @@ static GenericPool fps_controller_pool = {0};
 static GenericPool billboard_pool = {0}; // no data, just presence
 static GenericPool ambient_light_pool = {0};
 static GenericPool point_light_pool = {0};
+static GenericPool ui_pool = {0};
 
 // Helper to grow entity_to_index (sparse map)
 static void grow_entity_map (GenericPool* pool, Uint32 min_entity) {
@@ -260,6 +257,19 @@ void remove_billboard (Entity e) {
     pool_remove (&billboard_pool, e, 0);
 }
 
+void add_ui (Entity e, UIComponent* ui) {
+    pool_add (&ui_pool, e, ui, sizeof (UIComponent));
+};
+bool has_ui (Entity e) {
+    return pool_has (&ui_pool, e);
+};
+UIComponent* get_ui (Entity e) {
+    return (UIComponent*) pool_get (&ui_pool, e, sizeof (UIComponent));
+}
+void remove_ui (Entity e) {
+    pool_remove (&ui_pool, e, sizeof (UIComponent));
+};
+
 // Ambient Lights
 void add_ambient_light (Entity e, vec3 rgb, float brightness) {
     AmbientLightComponent comp = {rgb.x, rgb.y, rgb.z, brightness};
@@ -368,7 +378,12 @@ void fps_controller_update_system (AppState* state, float dt) {
     }
 }
 
-SDL_AppResult render_system (AppState* state) {
+SDL_AppResult render_system (
+    AppState* state,
+    Uint64* prerender,
+    Uint64* preui,
+    Uint64* postrender
+) {
     SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer (state->device);
     SDL_GPUTexture* swapchain;
     if (!SDL_WaitAndAcquireGPUSwapchainTexture (
@@ -478,6 +493,7 @@ SDL_AppResult render_system (AppState* state) {
         point_idx++;
     }
 
+    *prerender = SDL_GetTicksNS ();
     for (Uint32 i = 0; i < mesh_pool.count; i++) {
         Entity e = mesh_pool.index_to_entity[i];
         MeshComponent* mesh = &((MeshComponent*) mesh_pool.data)[i];
@@ -540,6 +556,150 @@ SDL_AppResult render_system (AppState* state) {
             SDL_DrawGPUPrimitives (pass, mesh->num_vertices, 1, 0, 0);
         }
     }
+
+    // draw queued texts
+    *preui = SDL_GetTicksNS ();
+    for (int i = 0; i < ui_pool.count; i++) {
+        UIComponent* ui = &((UIComponent*) ui_pool.data)[i];
+
+        bool scissor_enabled = false;
+        mu_Command* mu_command = NULL;
+        while (mu_next_command (&ui->context, &mu_command)) {
+            switch (mu_command->type) {
+            case MU_COMMAND_TEXT:
+                draw_text (
+                    ui, state, mu_command->text.str,
+                    (float) mu_command->text.pos.x,
+                    (float) mu_command->text.pos.y,
+                    (float) mu_command->text.color.r / 255.0f,
+                    (float) mu_command->text.color.g / 255.0f,
+                    (float) mu_command->text.color.b / 255.0f,
+                    (float) mu_command->text.color.a / 255.0f
+                );
+                break;
+            case MU_COMMAND_RECT:
+                draw_rectangle (
+                    ui, (float) mu_command->rect.rect.x,
+                    (float) mu_command->rect.rect.y,
+                    (float) mu_command->rect.rect.w,
+                    (float) mu_command->rect.rect.h,
+                    (float) mu_command->rect.color.r / 255.0f,
+                    (float) mu_command->rect.color.g / 255.0f,
+                    (float) mu_command->rect.color.b / 255.0f,
+                    (float) mu_command->rect.color.a / 255.0f
+                );
+                break;
+            case MU_COMMAND_CLIP:
+                if (mu_command->clip.rect.w <= 0 ||
+                    mu_command->clip.rect.h <= 0) {
+                    if (scissor_enabled) {
+                        SDL_SetGPUScissor (pass, NULL);
+                        scissor_enabled = false;
+                    }
+                } else {
+                    SDL_Rect scissor = {
+                        (int) mu_command->clip.rect.x,
+                        (int) mu_command->clip.rect.y,
+                        (int) mu_command->clip.rect.w,
+                        (int) mu_command->clip.rect.h,
+                    };
+                    SDL_SetGPUScissor (pass, &scissor);
+                    scissor_enabled = true;
+                }
+                break;
+            default:
+                break;
+            }
+        }
+        if (scissor_enabled) SDL_SetGPUScissor (pass, NULL);
+
+        if (ui->rect_count == 0) continue;
+        SDL_BindGPUGraphicsPipeline (pass, ui->pipeline);
+
+        for (int r = 0; r < ui->rect_count; r++) {
+            UIRect* rect = &ui->rects[r];
+
+            float rx = (float) state->width;
+            float ry = (float) state->height;
+            float x1 = rect->rect.x;
+            float y1 = rect->rect.y;
+            float x2 = rect->rect.x + rect->rect.w;
+            float y2 = rect->rect.y + rect->rect.h;
+            SDL_FColor col = rect->color;
+            float verts[40] = {
+                x1, y2, rx, ry, col.r, col.g, col.b, col.a, 0.0f, 1.0f,
+                x2, y2, rx, ry, col.r, col.g, col.b, col.a, 1.0f, 1.0f,
+                x1, y1, rx, ry, col.r, col.g, col.b, col.a, 0.0f, 0.0f,
+                x2, y1, rx, ry, col.r, col.g, col.b, col.a, 1.0f, 0.0f,
+            };
+            uint32_t inds[6] = {0, 1, 2, 1, 3, 2};
+
+            uint32_t vsize = sizeof (verts);
+            uint32_t isize = sizeof (inds);
+
+            SDL_GPUTransferBufferCreateInfo vtinfo = {
+                .size = vsize,
+                .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+            };
+            SDL_GPUTransferBuffer* vtbuf =
+                SDL_CreateGPUTransferBuffer (state->device, &vtinfo);
+            void* vmap = SDL_MapGPUTransferBuffer (state->device, vtbuf, false);
+            memcpy (vmap, verts, vsize);
+            SDL_UnmapGPUTransferBuffer (state->device, vtbuf);
+
+            SDL_GPUTransferBufferCreateInfo itinfo = {
+                .size = isize,
+                .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+            };
+            SDL_GPUTransferBuffer* itbuf =
+                SDL_CreateGPUTransferBuffer (state->device, &itinfo);
+            void* imap = SDL_MapGPUTransferBuffer (state->device, itbuf, false);
+            memcpy (imap, inds, isize);
+            SDL_UnmapGPUTransferBuffer (state->device, itbuf);
+
+            SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass (cmd);
+            SDL_GPUTransferBufferLocation vsrc = {
+                .transfer_buffer = vtbuf,
+                .offset = 0
+            };
+            SDL_GPUBufferRegion vdst =
+                {.buffer = ui->vbo, .offset = 0, .size = vsize};
+            SDL_UploadToGPUBuffer (copy, &vsrc, &vdst, false);
+            SDL_GPUTransferBufferLocation isrc = {
+                .transfer_buffer = itbuf,
+                .offset = 0
+            };
+            SDL_GPUBufferRegion idst =
+                {.buffer = ui->ibo, .offset = 0, .size = isize};
+            SDL_UploadToGPUBuffer (copy, &isrc, &idst, false);
+            SDL_EndGPUCopyPass (copy);
+            SDL_ReleaseGPUTransferBuffer (state->device, vtbuf);
+            SDL_ReleaseGPUTransferBuffer (state->device, itbuf);
+
+            SDL_GPUTextureSamplerBinding tex_bind = {
+                .texture = rect->texture,
+                .sampler = ui->sampler
+            };
+            SDL_BindGPUFragmentSamplers (pass, 0, &tex_bind, 1);
+
+            SDL_GPUBufferBinding vbind = {.buffer = ui->vbo, .offset = 0};
+            SDL_BindGPUVertexBuffers (pass, 0, &vbind, 1);
+            SDL_GPUBufferBinding ibind = {.buffer = ui->ibo, .offset = 0};
+            SDL_BindGPUIndexBuffer (
+                pass, &ibind, SDL_GPU_INDEXELEMENTSIZE_32BIT
+            );
+            SDL_DrawGPUIndexedPrimitives (pass, 6, 1, 0, 0, 0);
+
+            // If this was a text texture, release it now (keep white texture)
+            if (rect->texture != ui->white_texture) {
+                SDL_ReleaseGPUTexture (state->device, rect->texture);
+                rect->texture = ui->white_texture;
+            }
+        }
+
+        ui->rect_count = 0;
+    }
+    *postrender = SDL_GetTicksNS ();
 
     SDL_EndGPURenderPass (pass);
     SDL_SubmitGPUCommandBuffer (cmd);
