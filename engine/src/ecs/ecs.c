@@ -468,24 +468,24 @@ SDL_AppResult render_system (
     SDL_SetGPUViewport (pass, &viewport);
 
     int ambient_idx = 0;
-    vec4 ambient_colors[MAX_LIGHTS] = {0};
+    SDL_FColor ambient_colors[MAX_LIGHTS] = {0};
     for (Uint32 i = 0; i < ambient_light_pool.count; i++) {
         if (ambient_idx >= MAX_LIGHTS) break;
         AmbientLightComponent light =
             ((AmbientLightComponent*) ambient_light_pool.data)[i];
-        if (light.w <= 0.0f) continue;
+        if (light.a <= 0.0f) continue;
         ambient_colors[ambient_idx++] = light;
     }
 
     int point_idx = 0;
     vec4 light_positions[MAX_LIGHTS] = {0};
-    vec4 light_colors[MAX_LIGHTS] = {0};
+    SDL_FColor light_colors[MAX_LIGHTS] = {0};
     for (Uint32 i = 0; i < point_light_pool.count; i++) {
         if (point_idx >= MAX_LIGHTS) break;
         Entity e = point_light_pool.index_to_entity[i];
         PointLightComponent light =
             ((PointLightComponent*) point_light_pool.data)[i];
-        if (light.w <= 0.0f) continue;
+        if (light.a <= 0.0f) continue;
         TransformComponent* trans = get_transform (e);
         if (!trans) continue;
         light_positions[point_idx] =

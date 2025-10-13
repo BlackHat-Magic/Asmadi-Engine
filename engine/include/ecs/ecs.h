@@ -21,9 +21,9 @@ typedef struct {
     float model[16];
     float view[16];
     float proj[16];
-    vec4 ambient_color[MAX_LIGHTS];     // RGB + Strength
+    SDL_FColor ambient_color[MAX_LIGHTS];     // RGB + Strength
     vec4 point_light_pos[MAX_LIGHTS];   // xyz + padding (16-byte aligned)
-    vec4 point_light_color[MAX_LIGHTS]; // RGB + Strength
+    SDL_FColor point_light_color[MAX_LIGHTS]; // RGB + Strength
     vec4 camera_pos;
 } UBOData;
 
@@ -96,9 +96,9 @@ typedef struct {
 
 // Billboard is a flag (no data)
 
-typedef vec4 AmbientLightComponent;
+typedef SDL_FColor AmbientLightComponent;
 
-typedef vec4 PointLightComponent; // position is another component
+typedef SDL_FColor PointLightComponent; // position is another component
 
 // ECS API
 Entity create_entity (void);
