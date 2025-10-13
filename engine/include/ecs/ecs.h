@@ -137,7 +137,7 @@ bool has_billboard (Entity e);
 void remove_billboard (Entity e);
 
 // UI
-void add_ui (Entity e, UIComponent ui);
+void add_ui (Entity e, UIComponent* ui);
 bool has_ui (Entity e);
 UIComponent* get_ui (Entity e);
 void remove_ui (Entity e);
@@ -157,6 +157,11 @@ void remove_point_light (Entity e);
 // Systems
 void fps_controller_event_system (AppState* state, SDL_Event* event);
 void fps_controller_update_system (AppState* state, float dt);
-SDL_AppResult render_system (AppState* state, Uint64* prerender, Uint64* preui, Uint64* postrender);
+SDL_AppResult render_system (
+    AppState* state,
+    Uint64* prerender,
+    Uint64* preui,
+    Uint64* postrender
+);
 
 void free_pools (AppState* state);

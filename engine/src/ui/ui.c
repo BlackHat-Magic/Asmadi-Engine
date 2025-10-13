@@ -7,28 +7,34 @@
 #include <material/m_common.h>
 #include <ui/ui.h>
 
-UIComponent create_ui_component (
+UIComponent* create_ui_component (
     const AppState* state,
     const Uint32 max_rects,
     const Uint32 max_texts,
     const char* font_path,
     const float ptsize
 ) {
-    UIComponent ui;
-
-    ui.rects = malloc (sizeof (UIRect) * max_rects);
-    if (ui.rects == NULL) {
-        SDL_Log ("Failed to allocate UI rects.");
-        return (UIComponent) {0};
+    UIComponent* ui = malloc (sizeof (UIComponent));
+    if (ui == NULL) {
+        SDL_Log ("Failed to allocate UI component");
+        return NULL;
     }
-    ui.rect_count = 0;
-    ui.max_rects = max_rects;
+
+    ui->rects = malloc (sizeof (UIRect) * max_rects);
+    if (ui->rects == NULL) {
+        free (ui);
+        SDL_Log ("Failed to allocate UI rects.");
+        return NULL;
+    }
+    ui->rect_count = 0;
+    ui->max_rects = max_rects;
 
     // white texture
-    ui.white_texture = create_white_texture (state->device);
-    if (ui.white_texture == NULL) {
-        free (ui.rects);
-        return (UIComponent) {0};
+    ui->white_texture = create_white_texture (state->device);
+    if (ui->white_texture == NULL) {
+        free (ui->rects);
+        free (ui);
+        return NULL;
     }
 
     // sampler
@@ -42,19 +48,21 @@ UIComponent create_ui_component (
         .max_anisotropy = 1.0f,
         .enable_anisotropy = false
     };
-    ui.sampler = SDL_CreateGPUSampler (state->device, &sampler_info);
-    if (ui.sampler == NULL) {
-        free (ui.rects);
-        SDL_ReleaseGPUTexture (state->device, ui.white_texture);
+    ui->sampler = SDL_CreateGPUSampler (state->device, &sampler_info);
+    if (ui->sampler == NULL) {
+        free (ui->rects);
+        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
+        free (ui);
         SDL_Log ("Failed to create sampler: %s", SDL_GetError ());
-        return (UIComponent) {0};
+        return NULL;
     }
 
-    ui.font = TTF_OpenFont (font_path, ptsize);
-    if (ui.font == NULL) {
-        free (ui.rects);
+    ui->font = TTF_OpenFont (font_path, ptsize);
+    if (ui->font == NULL) {
+        free (ui->rects);
+        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
         SDL_Log ("Failed to create UI font: %s", SDL_GetError ());
-        return (UIComponent) {0};
+        return NULL;
     }
 
     // max rects * 4 vertices per rect * 10 floats per vertex * 4(?) bytes per
@@ -65,14 +73,16 @@ UIComponent create_ui_component (
         .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
         .size = vsize,
     };
-    ui.vbo = SDL_CreateGPUBuffer (state->device, &vinfo);
-    if (ui.vbo == NULL) {
-        free (ui.rects);
-        TTF_CloseFont (ui.font);
+    ui->vbo = SDL_CreateGPUBuffer (state->device, &vinfo);
+    if (ui->vbo == NULL) {
+        free (ui->rects);
+        TTF_CloseFont (ui->font);
+        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
+        free (ui);
         SDL_Log ("Failed to create UI vertex buffer: %s", SDL_GetError ());
-        return (UIComponent) {0};
+        return NULL;
     }
-    ui.vbo_size = vsize;
+    ui->vbo_size = vsize;
 
     Uint32 isize = max_rects * 6 * sizeof (Uint32);
     isize = isize < 4096 ? 4096 : isize;
@@ -80,38 +90,44 @@ UIComponent create_ui_component (
         .usage = SDL_GPU_BUFFERUSAGE_INDEX,
         .size = isize
     };
-    ui.ibo = SDL_CreateGPUBuffer (state->device, &iinfo);
-    if (ui.ibo == NULL) {
-        free (ui.rects);
-        TTF_CloseFont (ui.font);
-        SDL_ReleaseGPUBuffer (state->device, ui.vbo);
+    ui->ibo = SDL_CreateGPUBuffer (state->device, &iinfo);
+    if (ui->ibo == NULL) {
+        free (ui->rects);
+        TTF_CloseFont (ui->font);
+        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
+        SDL_ReleaseGPUBuffer (state->device, ui->vbo);
+        free (ui);
         SDL_Log ("Failed to create UI index buffer: %s", SDL_GetError ());
-        return (UIComponent) {0};
+        return NULL;
     }
-    ui.ibo_size = isize;
+    ui->ibo_size = isize;
 
-    ui.vertex = load_shader (
+    ui->vertex = load_shader (
         state->device, "shaders/ui.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX, 0, 0,
         0, 0
     );
-    if (ui.vertex == NULL) {
-        free (ui.rects);
-        TTF_CloseFont (ui.font);
-        SDL_ReleaseGPUBuffer (state->device, ui.vbo);
-        SDL_ReleaseGPUBuffer (state->device, ui.ibo);
-        return (UIComponent) {0};
+    if (ui->vertex == NULL) {
+        free (ui->rects);
+        TTF_CloseFont (ui->font);
+        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
+        SDL_ReleaseGPUBuffer (state->device, ui->vbo);
+        SDL_ReleaseGPUBuffer (state->device, ui->ibo);
+        free (ui);
+        return NULL;
     }
-    ui.fragment = load_shader (
+    ui->fragment = load_shader (
         state->device, "shaders/ui.frag.spv", SDL_GPU_SHADERSTAGE_FRAGMENT, 1,
         0, 0, 0
     );
-    if (ui.fragment == NULL) {
-        free (ui.rects);
-        TTF_CloseFont (ui.font);
-        SDL_ReleaseGPUBuffer (state->device, ui.vbo);
-        SDL_ReleaseGPUBuffer (state->device, ui.ibo);
-        SDL_ReleaseGPUShader (state->device, ui.vertex);
-        return (UIComponent) {0};
+    if (ui->fragment == NULL) {
+        free (ui->rects);
+        TTF_CloseFont (ui->font);
+        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
+        SDL_ReleaseGPUBuffer (state->device, ui->vbo);
+        SDL_ReleaseGPUBuffer (state->device, ui->ibo);
+        SDL_ReleaseGPUShader (state->device, ui->vertex);
+        free (ui);
+        return NULL;
     }
 
     SDL_GPUGraphicsPipelineCreateInfo info = {
@@ -140,8 +156,8 @@ UIComponent create_ui_component (
                 .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
             },
         .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
-        .vertex_shader = ui.vertex,
-        .fragment_shader = ui.fragment,
+        .vertex_shader = ui->vertex,
+        .fragment_shader = ui->fragment,
         .vertex_input_state =
             {.num_vertex_buffers = 1,
              .vertex_buffer_descriptions =
@@ -181,16 +197,18 @@ UIComponent create_ui_component (
             .compare_op = SDL_GPU_COMPAREOP_ALWAYS,
         }
     };
-    ui.pipeline = SDL_CreateGPUGraphicsPipeline (state->device, &info);
-    if (ui.pipeline == NULL) {
-        free (ui.rects);
-        TTF_CloseFont (ui.font);
-        SDL_ReleaseGPUBuffer (state->device, ui.vbo);
-        SDL_ReleaseGPUBuffer (state->device, ui.ibo);
-        SDL_ReleaseGPUShader (state->device, ui.vertex);
-        SDL_ReleaseGPUShader (state->device, ui.fragment);
+    ui->pipeline = SDL_CreateGPUGraphicsPipeline (state->device, &info);
+    if (ui->pipeline == NULL) {
+        free (ui->rects);
+        TTF_CloseFont (ui->font);
+        SDL_ReleaseGPUTexture (state->device, ui->white_texture);
+        SDL_ReleaseGPUBuffer (state->device, ui->vbo);
+        SDL_ReleaseGPUBuffer (state->device, ui->ibo);
+        SDL_ReleaseGPUShader (state->device, ui->vertex);
+        SDL_ReleaseGPUShader (state->device, ui->fragment);
+        free (ui);
         SDL_Log ("Unable to create UI graphics pipeline: %s", SDL_GetError ());
-        return (UIComponent) {0};
+        return NULL;
     }
 
     return ui;

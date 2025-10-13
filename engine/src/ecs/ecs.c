@@ -262,8 +262,8 @@ void remove_billboard (Entity e) {
     pool_remove (&billboard_pool, e, 0);
 }
 
-void add_ui (Entity e, UIComponent ui) {
-    pool_add (&ui_pool, e, &ui, sizeof (UIComponent));
+void add_ui (Entity e, UIComponent* ui) {
+    pool_add (&ui_pool, e, ui, sizeof (UIComponent));
 };
 bool has_ui (Entity e) {
     return pool_has (&ui_pool, e);
@@ -383,7 +383,12 @@ void fps_controller_update_system (AppState* state, float dt) {
     }
 }
 
-SDL_AppResult render_system (AppState* state, Uint64* prerender, Uint64* preui, Uint64* postrender) {
+SDL_AppResult render_system (
+    AppState* state,
+    Uint64* prerender,
+    Uint64* preui,
+    Uint64* postrender
+) {
     SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer (state->device);
     SDL_GPUTexture* swapchain;
     if (!SDL_WaitAndAcquireGPUSwapchainTexture (
@@ -556,7 +561,6 @@ SDL_AppResult render_system (AppState* state, Uint64* prerender, Uint64* preui, 
             SDL_DrawGPUPrimitives (pass, mesh->num_vertices, 1, 0, 0);
         }
     }
-
 
     // draw queued texts
     *preui = SDL_GetTicksNS ();
