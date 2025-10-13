@@ -1,8 +1,7 @@
-#include "geometry/ring.h"
-
 #include <math.h>
 #include <stdlib.h>
 
+#include <geometry/ring.h>
 #include <geometry/g_common.h>
 
 MeshComponent create_ring_mesh (

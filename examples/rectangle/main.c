@@ -18,25 +18,25 @@
 #define MOUSE_SENSE 1.0f / 100.0f
 #define MOVEMENT_SPEED 3.0f
 
-Entity torus;
-Entity player;
 
 typedef struct {
     bool quit;
     gpu_renderer renderer;
-    Entity cam;
+    Entity player;
+    Entity torus;
     Uint64 last_time;
     Uint64 prerender;
     Uint64 preui;
     Uint64 postrender;
     float frame_rate;
     Uint64 frame_count;
+    bool relative_mouse;
 } AppState;
 
 SDL_AppResult SDL_AppEvent (void* appstate, SDL_Event* event) {
     AppState* state = (AppState*) appstate;
 
-    Entity cam = state->cam;
+    Entity cam = state->player;
     if (cam == (Entity) -1 || !has_transform (cam)) return SDL_APP_CONTINUE;
     TransformComponent* cam_trans = get_transform (cam);
 
@@ -45,11 +45,14 @@ SDL_AppResult SDL_AppEvent (void* appstate, SDL_Event* event) {
         state->quit = true;
         break;
     case SDL_EVENT_KEY_DOWN:
-        if (event->key.key == SDLK_ESCAPE) state->quit = true;
+        if (event->key.key == SDLK_ESCAPE) {
+            state->relative_mouse = !state->relative_mouse;
+            SDL_SetWindowRelativeMouseMode (state->renderer.window, state->relative_mouse);
+        }
         break;
     }
 
-    fps_controller_event_system(event);
+    if (state->relative_mouse) fps_controller_event_system(event);
 
     return SDL_APP_CONTINUE;
 }
@@ -67,7 +70,7 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     }
     state->renderer.width = STARTING_WIDTH;
     state->renderer.height = STARTING_HEIGHT;
-    state->cam = (Entity) -1;
+    state->player = (Entity) -1;
 
     // initialize SDL
     if (!SDL_Init (SDL_INIT_VIDEO)) {
@@ -150,15 +153,15 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     }
 
     // player
-    player = create_entity ();
+    state->player = create_entity ();
     add_transform (
-        player, (vec3) {0.0f, 0.0f, -2.0f}, (vec3) {0.0f, 0.0f, 0.0f},
+        state->player, (vec3) {0.0f, 0.0f, -2.0f}, (vec3) {0.0f, 0.0f, 0.0f},
         (vec3) {1.0f, 1.0f, 1.0f}
     );
-    add_camera (player, STARTING_FOV, 0.01f, 1000.0f);
-    add_fps_controller (player, MOUSE_SENSE, MOVEMENT_SPEED);
-    state->cam = player;
-    SDL_SetWindowRelativeMouseMode (state->renderer.window, true);
+    add_camera (state->player, STARTING_FOV, 0.01f, 1000.0f);
+    add_fps_controller (state->player, MOUSE_SENSE, MOVEMENT_SPEED);
+    state->relative_mouse = true;
+    SDL_SetWindowRelativeMouseMode (state->renderer.window, state->relative_mouse);
     UIComponent* ui = create_ui_component (
         &state->renderer, 255, 255, "./assets/NotoSans-Regular.ttf", 12.0f
     );
@@ -166,24 +169,24 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
         // logging handled inside function
         return SDL_APP_FAILURE;
     }
-    add_ui (player, ui);
+    add_ui (state->player, ui);
     // ui->context.style->title_height = 30;
     // ui->context.style->padding = 6;
 
     // torus
-    torus = create_entity ();
+    state->torus = create_entity ();
     MeshComponent torus_mesh = create_torus_mesh (
         0.5f, 0.2f, 16, 32, (float) M_PI * 2.0f, state->renderer.device
     );
     if (torus_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE;
-    add_mesh (torus, torus_mesh);
+    add_mesh (state->torus, torus_mesh);
     // torus material
     MaterialComponent torus_material =
         create_phong_material ((vec3) {0.0f, 1.0f, 0.0f}, SIDE_FRONT, &state->renderer);
-    add_material (torus, torus_material);
+    add_material (state->torus, torus_material);
     // torus transform
     add_transform (
-        torus, (vec3) {0.0f, 0.0f, 0.0f}, (vec3) {0.0f, 0.0f, 0.0f},
+        state->torus, (vec3) {0.0f, 0.0f, 0.0f}, (vec3) {0.0f, 0.0f, 0.0f},
         (vec3) {1.0f, 1.0f, 1.0f}
     );
 
@@ -202,7 +205,6 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     state->last_time = SDL_GetPerformanceCounter ();
 
     *appstate = state;
-    SDL_Log ("Started app.");
     return SDL_APP_CONTINUE;
 }
 
@@ -211,7 +213,7 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
     if (state->quit) return SDL_APP_SUCCESS;
 
     // TODO: handle no camera
-    Entity cam = state->cam;
+    Entity cam = state->player;
     if (cam == (Entity) -1) return SDL_APP_CONTINUE;
     TransformComponent* cam_trans = get_transform (cam);
 
@@ -227,7 +229,7 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
     state->frame_count++;
 
     // draw ui
-    UIComponent* ui = get_ui (player);
+    UIComponent* ui = get_ui (state->player);
     mu_begin (&ui->context);
     if (mu_begin_window (&ui->context, "Test Window", mu_rect (250, 250, 300, 240))) {
         mu_layout_row (&ui->context, 1, (int[]){80}, 0);
@@ -250,12 +252,12 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
     sprintf (buffer, "Framerate: %.3f", state->frame_rate);
     draw_text (ui, state->renderer.device, buffer, 5.0f, 41.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 
-    TransformComponent transform = *get_transform (torus);
+    TransformComponent transform = *get_transform (state->torus);
     vec3 rotation = euler_from_quat (transform.rotation);
     rotation.x += 0.005f;
     rotation.z += 0.01f;
     transform.rotation = quat_from_euler (rotation);
-    add_transform (torus, transform.position, rotation, transform.scale);
+    add_transform (state->torus, transform.position, rotation, transform.scale);
 
     // camera forward vector
     fps_controller_update_system (dt);
@@ -268,7 +270,7 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
 void SDL_AppQuit (void* appstate, SDL_AppResult result) {
     AppState* state = (AppState*) appstate;
 
-    UIComponent ui = *(get_ui (player));
+    UIComponent ui = *(get_ui (state->player));
 
     if (ui.rects) free (ui.rects);
     if (ui.pipeline)
