@@ -39,9 +39,9 @@ The main goal with this project was to learn graphics programming. In game devel
     - [ ] Tube
     - [ ] GLTF loader
 - [ ] Various Math Tools
-    - [ ] Random Integers
-    - [ ] Random Floats
-    - [ ] Random Choice
+    - [X] ~~Random Integers~~
+    - [X] ~~Random Floats~~
+    - [X] ~~Random Choice~~
     - [ ] Weighted Randomness
     - [ ] Splines
     - [ ] LERP
