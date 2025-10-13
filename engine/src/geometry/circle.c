@@ -1,8 +1,8 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include <geometry/g_common.h>
 #include <geometry/circle.h>
+#include <geometry/g_common.h>
 
 MeshComponent
 create_circle_mesh (float radius, int segments, SDL_GPUDevice* device) {

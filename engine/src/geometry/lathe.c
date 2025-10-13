@@ -1,9 +1,9 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include <math/matrix.h>
 #include <geometry/g_common.h>
 #include <geometry/lathe.h>
+#include <math/matrix.h>
 
 MeshComponent create_lathe_mesh (
     vec2* points,

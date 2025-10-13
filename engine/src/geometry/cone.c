@@ -1,5 +1,5 @@
-#include <geometry/cylinder.h>
 #include <geometry/cone.h>
+#include <geometry/cylinder.h>
 
 MeshComponent create_cone_mesh (
     float radius,

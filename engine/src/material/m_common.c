@@ -234,12 +234,14 @@ int set_vertex_shader (
     MaterialComponent* mat,
     const char* filepath
 ) {
-    mat->vertex_shader =
-        load_shader (renderer->device, filepath, SDL_GPU_SHADERSTAGE_VERTEX, 0, 1, 0, 0);
+    mat->vertex_shader = load_shader (
+        renderer->device, filepath, SDL_GPU_SHADERSTAGE_VERTEX, 0, 1, 0, 0
+    );
     if (mat->vertex_shader == NULL)
         return 1; // logging handled in load_shader()
     if (mat->vertex_shader && mat->fragment_shader) {
-        int pipe_failed = build_pipeline (renderer->device, mat, renderer->format);
+        int pipe_failed =
+            build_pipeline (renderer->device, mat, renderer->format);
         if (pipe_failed) return 1; // logging handled in build_pipeline()
     }
     return 0;
@@ -260,7 +262,8 @@ int set_fragment_shader (
     if (mat->fragment_shader == NULL)
         return 1; // logging handled in load_shader()
     if (mat->vertex_shader && mat->fragment_shader) {
-        int pipe_failed = build_pipeline (renderer->device, mat, renderer->format);
+        int pipe_failed =
+            build_pipeline (renderer->device, mat, renderer->format);
         if (pipe_failed) return 1; // logging handled in build_pipeline()
     }
     return 0;

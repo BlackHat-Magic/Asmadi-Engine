@@ -1,5 +1,5 @@
-#include <material/phong_material.h>
 #include <material/m_common.h>
+#include <material/phong_material.h>
 
 MaterialComponent
 create_phong_material (vec3 color, MaterialSide side, gpu_renderer* renderer) {
@@ -12,17 +12,15 @@ create_phong_material (vec3 color, MaterialSide side, gpu_renderer* renderer) {
     };
 
     // TODO: communicate failure to caller
-    int vert_failed = set_vertex_shader (
-        renderer, &mat, "shaders/phong_material.vert.spv"
-    );
+    int vert_failed =
+        set_vertex_shader (renderer, &mat, "shaders/phong_material.vert.spv");
     if (vert_failed) {
         mat.vertex_shader = NULL;
         return mat;
     }
 
     int frag_failed = set_fragment_shader (
-        renderer, &mat, "shaders/phong_material.frag.spv",
-        1, 1
+        renderer, &mat, "shaders/phong_material.frag.spv", 1, 1
     );
     if (frag_failed) mat.fragment_shader = NULL;
 

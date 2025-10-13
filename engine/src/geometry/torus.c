@@ -1,9 +1,9 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include <math/matrix.h>
 #include <geometry/g_common.h>
 #include <geometry/torus.h>
+#include <math/matrix.h>
 
 MeshComponent create_torus_mesh (
     float radius,

@@ -387,7 +387,8 @@ SDL_AppResult render_system (
     SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer (renderer->device);
     SDL_GPUTexture* swapchain;
     if (!SDL_WaitAndAcquireGPUSwapchainTexture (
-            cmd, renderer->window, &swapchain, &renderer->width, &renderer->height
+            cmd, renderer->window, &swapchain, &renderer->width,
+            &renderer->height
         )) {
         SDL_Log ("Failed to get swapchain texture: %s", SDL_GetError ());
         return SDL_APP_FAILURE;
@@ -398,7 +399,8 @@ SDL_AppResult render_system (
         return SDL_APP_FAILURE;
     }
 
-    if (renderer->dwidth != renderer->width || renderer->dheight != renderer->height) {
+    if (renderer->dwidth != renderer->width ||
+        renderer->dheight != renderer->height) {
         if (renderer->depth_texture)
             SDL_ReleaseGPUTexture (renderer->device, renderer->depth_texture);
         SDL_GPUTextureCreateInfo depth_info = {
@@ -460,7 +462,8 @@ SDL_AppResult render_system (
     SDL_GPURenderPass* pass =
         SDL_BeginGPURenderPass (cmd, &color_target_info, 1, &depth_target_info);
     SDL_GPUViewport viewport = {
-        0.0f, 0.0f, (float) renderer->width, (float) renderer->height, 0.0f, 1.0f
+        0.0f, 0.0f, (float) renderer->width, (float) renderer->height,
+        0.0f, 1.0f
     };
     SDL_SetGPUViewport (pass, &viewport);
 
@@ -642,7 +645,8 @@ SDL_AppResult render_system (
             };
             SDL_GPUTransferBuffer* vtbuf =
                 SDL_CreateGPUTransferBuffer (renderer->device, &vtinfo);
-            void* vmap = SDL_MapGPUTransferBuffer (renderer->device, vtbuf, false);
+            void* vmap =
+                SDL_MapGPUTransferBuffer (renderer->device, vtbuf, false);
             memcpy (vmap, verts, vsize);
             SDL_UnmapGPUTransferBuffer (renderer->device, vtbuf);
 
@@ -652,7 +656,8 @@ SDL_AppResult render_system (
             };
             SDL_GPUTransferBuffer* itbuf =
                 SDL_CreateGPUTransferBuffer (renderer->device, &itinfo);
-            void* imap = SDL_MapGPUTransferBuffer (renderer->device, itbuf, false);
+            void* imap =
+                SDL_MapGPUTransferBuffer (renderer->device, itbuf, false);
             memcpy (imap, inds, isize);
             SDL_UnmapGPUTransferBuffer (renderer->device, itbuf);
 

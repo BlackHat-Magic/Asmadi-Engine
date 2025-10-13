@@ -184,8 +184,8 @@ UIComponent* create_ui_component (
     ui->ibo_size = isize;
 
     ui->vertex = load_shader (
-        renderer->device, "shaders/ui.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX, 0, 0,
-        0, 0
+        renderer->device, "shaders/ui.vert.spv", SDL_GPU_SHADERSTAGE_VERTEX, 0,
+        0, 0, 0
     );
     if (ui->vertex == NULL) {
         free (ui->rects);
@@ -197,8 +197,8 @@ UIComponent* create_ui_component (
         return NULL;
     }
     ui->fragment = load_shader (
-        renderer->device, "shaders/ui.frag.spv", SDL_GPU_SHADERSTAGE_FRAGMENT, 1,
-        0, 0, 0
+        renderer->device, "shaders/ui.frag.spv", SDL_GPU_SHADERSTAGE_FRAGMENT,
+        1, 0, 0, 0
     );
     if (ui->fragment == NULL) {
         free (ui->rects);
@@ -335,8 +335,7 @@ ui_create_text_texture (SDL_GPUDevice* device, SDL_Surface* abgr) {
         .size = (Uint32) (abgr->pitch * abgr->h),
         .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
     };
-    SDL_GPUTransferBuffer* tbuf =
-        SDL_CreateGPUTransferBuffer (device, &tbinfo);
+    SDL_GPUTransferBuffer* tbuf = SDL_CreateGPUTransferBuffer (device, &tbinfo);
     if (!tbuf) {
         SDL_ReleaseGPUTexture (device, tex);
         SDL_Log ("UI text transfer buffer create failed: %s", SDL_GetError ());

@@ -1,5 +1,5 @@
-#include <material/m_common.h>
 #include <material/basic_material.h>
+#include <material/m_common.h>
 
 MaterialComponent
 create_basic_material (vec3 color, MaterialSide side, gpu_renderer* renderer) {
@@ -12,9 +12,8 @@ create_basic_material (vec3 color, MaterialSide side, gpu_renderer* renderer) {
     };
 
     // TODO: communicate failure to caller
-    int vert_failed = set_vertex_shader (
-        renderer, &mat, "shaders/basic_material.vert.spv"
-    );
+    int vert_failed =
+        set_vertex_shader (renderer, &mat, "shaders/basic_material.vert.spv");
     if (vert_failed) {
         mat.vertex_shader = NULL;
         return mat;

@@ -1,10 +1,10 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include <math/matrix.h>
 #include <ecs/ecs.h>
-#include <geometry/g_common.h>
 #include <geometry/dodecahedron.h>
+#include <geometry/g_common.h>
+#include <math/matrix.h>
 
 MeshComponent create_dodecahedron_mesh (float radius, SDL_GPUDevice* device) {
     float phi = (1.0f + sqrtf (5.0f)) / 2.0f;

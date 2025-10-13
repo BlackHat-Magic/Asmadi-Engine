@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
-#include <geometry/lathe.h>
 #include <geometry/cylinder.h>
+#include <geometry/lathe.h>
 
 MeshComponent create_cylinder_mesh (
     float radius_top,

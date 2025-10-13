@@ -120,7 +120,10 @@ void remove_mesh (SDL_GPUDevice* device, Entity e); // state for device release
 void add_material (Entity e, MaterialComponent material);
 MaterialComponent* get_material (Entity e);
 bool has_material (Entity e);
-void remove_material (SDL_GPUDevice* device, Entity e); // state for device release
+void remove_material (
+    SDL_GPUDevice* device,
+    Entity e
+); // state for device release
 
 // Cameras
 void add_camera (Entity e, float fov, float near_clip, float far_clip);
