@@ -4,4 +4,4 @@
 #include <math/matrix.h>
 
 MaterialComponent
-create_basic_material (vec3 color, MaterialSide side, gpu_renderer* renderer);
+create_basic_material (SDL_FColor color, SDL_GPUCullMode cullmode, gpu_renderer* renderer);

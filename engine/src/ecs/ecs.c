@@ -271,8 +271,8 @@ void remove_ui (Entity e) {
 };
 
 // Ambient Lights
-void add_ambient_light (Entity e, vec3 rgb, float brightness) {
-    AmbientLightComponent comp = {rgb.x, rgb.y, rgb.z, brightness};
+void add_ambient_light (Entity e, SDL_FColor color) {
+    AmbientLightComponent comp = color;
     pool_add (&ambient_light_pool, e, &comp, sizeof (AmbientLightComponent));
 }
 AmbientLightComponent* get_ambient_light (Entity e) {
@@ -288,9 +288,114 @@ void remove_ambient_light (Entity e) {
 }
 
 // Point Lights
-void add_point_light (Entity e, vec3 rgb, float brightness) {
-    PointLightComponent comp = {rgb.x, rgb.y, rgb.z, brightness};
+// TODO: bulk initialize point lights
+// TODO: communicate failure to caller
+// TODO: what if the transform is added after the point light?
+void add_point_light (Entity e, SDL_FColor color, gpu_renderer* renderer) {
+    PointLightComponent comp = color;
     pool_add (&point_light_pool, e, &comp, sizeof (PointLightComponent));
+
+    // reconstruct point light buffer
+    GPUPointLight all_lights[point_light_pool.count];
+    for (int i = 0; i < point_light_pool.count; i++) {
+        // create gpu light
+        Entity light_entity = point_light_pool.index_to_entity[i];
+        GPUPointLight gpu_light = {0};
+
+        // copy in the color
+        PointLightComponent* light = get_point_light (light_entity);
+        // light = NULL;
+        gpu_light.color = light ? *light : (SDL_FColor) {1.0f, 1.0f, 1.0f, 1.0f};
+
+        // copy in the position
+        TransformComponent* transform = get_transform (light_entity);
+        vec4 position;
+        if (transform) {
+            position.x = transform->position.x;
+            position.y = transform->position.y;
+            position.z = transform->position.z;
+            position.w = 0.0f;
+        } else {
+            position = (vec4) {0};
+        }
+        gpu_light.position = position;
+        
+        all_lights[i] = gpu_light;
+        SDL_Log (
+            "Light: x=%.1f, y=%.1f, z=%.1f, r=%.1f, g=%.1f, b=%.1f, a=%.1f",
+            position.x,
+            position.y,
+            position.z,
+            gpu_light.color.r,
+            gpu_light.color.g,
+            gpu_light.color.b,
+            gpu_light.color.a
+        );
+    }
+
+    // release existing ssbo if it's too small
+    Uint32 ssbo_size = point_light_pool.count * sizeof (GPUPointLight);
+    ssbo_size = ssbo_size  > 1024 ? ssbo_size : 1024;
+    if (renderer->point_ssbo && renderer->point_size < ssbo_size) {
+        SDL_ReleaseGPUBuffer (renderer->device, renderer->point_ssbo);
+        renderer->point_ssbo = NULL;
+        renderer->point_size = 0;
+    }
+
+    // if ssbo is uninitialized (or if it was released because too small), create one
+    if (renderer->point_ssbo == NULL) {
+        SDL_GPUBufferCreateInfo ssbo_info = {
+            .size = ssbo_size,
+            .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ
+        };
+        renderer->point_ssbo = SDL_CreateGPUBuffer (renderer->device, &ssbo_info);
+        if (renderer->point_ssbo == NULL) {
+            return;
+        }
+        renderer->point_size = ssbo_size;
+    }
+
+    // create transfer buffer
+    SDL_GPUTransferBufferCreateInfo tbuf_info = {
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        .size = ssbo_size
+    };
+    SDL_GPUTransferBuffer* tbuf = SDL_CreateGPUTransferBuffer (renderer->device, &tbuf_info);
+    void* map = SDL_MapGPUTransferBuffer (renderer->device, tbuf, false);
+    if (map == NULL) {
+        SDL_ReleaseGPUTransferBuffer (renderer->device, tbuf);
+        return;
+    }
+    memcpy (map, all_lights, sizeof (all_lights));
+    GPUPointLight* mapped_light = (GPUPointLight*) map;
+    SDL_Log (
+        "Light: x=%.1f, y=%.1f, z=%.1f, r=%.1f, g=%.1f, b=%.1f, a=%.1f",
+        mapped_light->position.x,
+        mapped_light->position.y,
+        mapped_light->position.z,
+        mapped_light->color.r,
+        mapped_light->color.g,
+        mapped_light->color.b,
+        mapped_light->color.a
+    );
+    SDL_UnmapGPUTransferBuffer (renderer->device, tbuf);
+
+    // upload data
+    SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(renderer->device);
+    SDL_GPUCopyPass* pass = SDL_BeginGPUCopyPass(cmd);
+    SDL_GPUTransferBufferLocation tbuf_loc = {
+        .transfer_buffer = tbuf,
+        .offset = 0,
+    };
+    SDL_GPUBufferRegion tbuf_region = {
+        .buffer = renderer->point_ssbo,
+        .offset = 0,
+        .size = sizeof (all_lights),
+    };
+    SDL_UploadToGPUBuffer (pass, &tbuf_loc, &tbuf_region, false);
+    SDL_EndGPUCopyPass (pass);
+    SDL_SubmitGPUCommandBuffer (cmd);
+    SDL_ReleaseGPUTransferBuffer(renderer->device, tbuf);
 }
 PointLightComponent* get_point_light (Entity e) {
     return (PointLightComponent*) pool_get (
@@ -302,6 +407,72 @@ bool has_point_light (Entity e) {
 }
 void remove_point_light (Entity e) {
     pool_remove (&point_light_pool, e, sizeof (PointLightComponent));
+}
+
+// TODO: more robust???
+gpu_renderer* renderer_init (SDL_GPUDevice* device, SDL_Window* window, const Uint32 width, const Uint32 height) {
+    // create renderer
+    gpu_renderer* renderer = calloc (1, sizeof (gpu_renderer));
+    if (renderer == NULL) {
+        SDL_Log ("Failed to allocate GPU renderer.");
+        return NULL;
+    }
+    renderer->device = device;
+    renderer->window = window;
+    renderer->width = width;
+    renderer->dwidth = width;
+    renderer->height = height;
+    renderer->dheight = height;
+
+    // depth texture
+    SDL_GPUTextureCreateInfo depth_info = {
+        .type = SDL_GPU_TEXTURETYPE_2D,
+        .format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
+        .width = width,
+        .height = height,
+        .layer_count_or_depth = 1,
+        .num_levels = 1,
+        .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET
+    };
+    renderer->depth_texture = SDL_CreateGPUTexture (device, &depth_info);
+    if (renderer->depth_texture == NULL) {
+        free (renderer);
+        SDL_Log ("Failed to create renderer depth texture: %s", SDL_GetError ());
+        return NULL;
+    }
+
+    // texture format
+    renderer->format = SDL_GetGPUSwapchainTextureFormat (device, window);
+    if (renderer->format == SDL_GPU_TEXTUREFORMAT_INVALID) {
+        SDL_ReleaseGPUTexture (device, renderer->depth_texture);
+        free (renderer);
+        SDL_Log ("Failed to get swapchain texture format: %s", SDL_GetError ());
+        return NULL;
+    }
+
+    SDL_GPUBufferCreateInfo ssbo_info = {
+        .size = 1024,
+        .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ
+    };
+
+    renderer->point_ssbo = SDL_CreateGPUBuffer (renderer->device, &ssbo_info);
+    if (renderer->point_ssbo == NULL) {
+        SDL_ReleaseGPUTexture (device, renderer->depth_texture);
+        free (renderer);
+        return NULL;
+    }
+    renderer->point_size = 1024;
+
+    renderer->ambient_ssbo = SDL_CreateGPUBuffer (renderer->device, &ssbo_info);
+    if (renderer->ambient_ssbo == NULL) {
+        SDL_ReleaseGPUBuffer (device, renderer->point_ssbo);
+        SDL_ReleaseGPUTexture (device, renderer->depth_texture);
+        free (renderer);
+        return NULL;
+    }
+    renderer->ambient_size = 1024;
+
+    return renderer;
 }
 
 void fps_controller_event_system (SDL_Event* event) {
@@ -399,30 +570,6 @@ SDL_AppResult render_system (
         return SDL_APP_FAILURE;
     }
 
-    if (renderer->dwidth != renderer->width ||
-        renderer->dheight != renderer->height) {
-        if (renderer->depth_texture)
-            SDL_ReleaseGPUTexture (renderer->device, renderer->depth_texture);
-        SDL_GPUTextureCreateInfo depth_info = {
-            .type = SDL_GPU_TEXTURETYPE_2D,
-            .format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
-            .width = renderer->width,
-            .height = renderer->height,
-            .layer_count_or_depth = 1,
-            .num_levels = 1,
-            .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET
-        };
-        renderer->depth_texture =
-            SDL_CreateGPUTexture (renderer->device, &depth_info);
-        if (!renderer->depth_texture) {
-            SDL_Log ("Failed to recreate depth texture: %s", SDL_GetError ());
-            SDL_SubmitGPUCommandBuffer (cmd);
-            return SDL_APP_FAILURE;
-        }
-        renderer->dwidth = renderer->width;
-        renderer->dheight = renderer->height;
-    }
-
     TransformComponent* cam_trans = get_transform (cam);
     CameraComponent* cam_comp = get_camera (cam);
     if (!cam_trans || !cam_comp) {
@@ -430,19 +577,6 @@ SDL_AppResult render_system (
         SDL_SubmitGPUCommandBuffer (cmd);
         return SDL_APP_CONTINUE;
     }
-
-    mat4 view;
-    mat4_identity (view);
-    vec4 conj_rot = quat_conjugate (cam_trans->rotation);
-    mat4_rotate_quat (view, conj_rot);
-    mat4_translate (view, vec3_scale (cam_trans->position, -1.0f));
-
-    mat4 proj;
-    float aspect = (float) renderer->width / (float) renderer->height;
-    mat4_perspective (
-        proj, cam_comp->fov * (float) M_PI / 180.0f, aspect,
-        cam_comp->near_clip, cam_comp->far_clip
-    );
 
     SDL_GPUColorTargetInfo color_target_info = {
         .texture = swapchain,
@@ -467,43 +601,81 @@ SDL_AppResult render_system (
     };
     SDL_SetGPUViewport (pass, &viewport);
 
-    int ambient_idx = 0;
-    SDL_FColor ambient_colors[MAX_LIGHTS] = {0};
-    for (Uint32 i = 0; i < ambient_light_pool.count; i++) {
-        if (ambient_idx >= MAX_LIGHTS) break;
-        AmbientLightComponent light =
-            ((AmbientLightComponent*) ambient_light_pool.data)[i];
-        if (light.a <= 0.0f) continue;
-        ambient_colors[ambient_idx++] = light;
-    }
+    // frame UBOs (set 0)
+    mat4 view;
+    mat4_identity (view);
+    vec4 conj_rot = quat_conjugate (cam_trans->rotation);
+    mat4_rotate_quat (view, conj_rot);
+    mat4_translate (view, vec3_scale (cam_trans->position, -1.0f));
 
-    int point_idx = 0;
-    vec4 light_positions[MAX_LIGHTS] = {0};
-    SDL_FColor light_colors[MAX_LIGHTS] = {0};
-    for (Uint32 i = 0; i < point_light_pool.count; i++) {
-        if (point_idx >= MAX_LIGHTS) break;
-        Entity e = point_light_pool.index_to_entity[i];
-        PointLightComponent light =
-            ((PointLightComponent*) point_light_pool.data)[i];
-        if (light.a <= 0.0f) continue;
-        TransformComponent* trans = get_transform (e);
-        if (!trans) continue;
-        light_positions[point_idx] =
-            (vec4) {trans->position.x, trans->position.y, trans->position.z,
-                    0.0f};
-        light_colors[point_idx] = light;
-        point_idx++;
-    }
+    mat4 proj;
+    float aspect = (float) renderer->width / (float) renderer->height;
+    mat4_perspective (
+        proj, cam_comp->fov * (float) M_PI / 180.0f, aspect,
+        cam_comp->near_clip, cam_comp->far_clip
+    );
+
+    Uint32 ambient_count = ambient_light_pool.count;
+    Uint32 point_count = point_light_pool.count;
+
+    // vertex stage
+    //  must-have
+    //  - view matrix
+    //  - projection matrix
+    //  sometimes
+    //  - normal or inverse-transpose
+    //  - time
+    //  - per-instance index
+    struct {
+        mat4 view;
+        mat4 proj;
+    } vertex_ubo;
+    // because C is annoying and won't let me just copy the array over smh
+    memcpy (&vertex_ubo.view, &view, sizeof (view));
+    memcpy (&vertex_ubo.proj, &proj, sizeof (proj));
+    SDL_PushGPUVertexUniformData (cmd, 0, &vertex_ubo, sizeof (vertex_ubo));
+
+    // fragment stage
+    //  must-have
+    //  - camera transform
+    //  - exposure time for tonemapping
+    //  often
+    //  - environment parameters
+    //  - light counts
+    //  shadow/map transforms/handles
+    vec4 cam_pos = {
+        .x = cam_trans->position.x,
+        .y = cam_trans->position.y,
+        .z = cam_trans->position.z,
+        .w = 0.0f,
+    };
+    struct {
+        vec4 cam_pos;
+        vec4 cam_rot;
+        Uint32 ambient_count;
+        Uint32 point_count;
+        Uint32 pad0;
+        Uint32 pad1;
+    } fragment_ubo = {
+        .cam_pos = cam_pos,
+        .cam_rot = cam_trans->rotation,
+        .ambient_count = ambient_count,
+        .point_count = point_count,
+        .pad0 = 0, .pad1 = 1,
+    };
+    SDL_PushGPUFragmentUniformData (cmd, 0, &fragment_ubo, sizeof (fragment_ubo));
 
     *prerender = SDL_GetTicksNS ();
     for (Uint32 i = 0; i < mesh_pool.count; i++) {
         Entity e = mesh_pool.index_to_entity[i];
-        MeshComponent* mesh = &((MeshComponent*) mesh_pool.data)[i];
-        if (!mesh->vertex_buffer) continue;
+        MeshComponent* mesh = get_mesh (e);
+        if (mesh == NULL) continue;
         MaterialComponent* mat = get_material (e);
         TransformComponent* trans = get_transform (e);
         if (!mat || !mat->pipeline || !trans) continue;
 
+        // object vertex ubo (set 2)
+        // TODO: encode arbitrary number of custom per-object uniforms
         mat4 model;
         mat4_identity (model);
         if (has_billboard (e)) {
@@ -516,36 +688,29 @@ SDL_AppResult render_system (
             mat4_rotate_quat (model, trans->rotation);
             mat4_scale (model, trans->scale);
         }
-
-        UBOData ubo = {0};
-        memcpy (ubo.model, model, sizeof (mat4));
-        memcpy (ubo.view, view, sizeof (mat4));
-        memcpy (ubo.proj, proj, sizeof (mat4));
-        memcpy (
-            ubo.point_light_pos, light_positions, point_idx * sizeof (vec4)
-        );
-        memcpy (ubo.point_light_color, light_colors, point_idx * sizeof (vec4));
-        memcpy (ubo.ambient_color, ambient_colors, ambient_idx * sizeof (vec4));
-
-        ubo.color = (vec4) {mat->color.x, mat->color.y, mat->color.z, 1.0f};
-        ubo.camera_pos = (vec4) {cam_trans->position.x, cam_trans->position.y,
-                                 cam_trans->position.z, 0.0f};
+        struct {
+            mat4 model;
+            vec4 color;
+        } vertex_ubo;
+        memcpy (&vertex_ubo.model, &model, sizeof (model));
+        memcpy (&vertex_ubo.color, &mat->color, sizeof (SDL_FColor));
+        SDL_PushGPUVertexUniformData (cmd, 1, &vertex_ubo, sizeof (vertex_ubo));
 
         SDL_BindGPUGraphicsPipeline (pass, mat->pipeline);
-        SDL_PushGPUVertexUniformData (cmd, 0, &ubo, sizeof (UBOData));
-        SDL_PushGPUFragmentUniformData (cmd, 0, &ubo, sizeof (UBOData));
-
-        SDL_GPUTextureSamplerBinding tex_bind = {
-            .texture = mat->texture ? mat->texture : renderer->white_texture,
-            .sampler = renderer->sampler
-        };
-        SDL_BindGPUFragmentSamplers (pass, 0, &tex_bind, 1);
 
         SDL_GPUBufferBinding vbo_binding = {
             .buffer = mesh->vertex_buffer,
             .offset = 0
         };
         SDL_BindGPUVertexBuffers (pass, 0, &vbo_binding, 1);
+
+        SDL_GPUTextureSamplerBinding tex_bind = {
+            .texture = mat->texture,
+            .sampler = mat->sampler
+        };
+        SDL_BindGPUFragmentSamplers (pass, 0, &tex_bind, 1);
+        SDL_GPUBuffer* buffers[] = {renderer->ambient_ssbo, renderer->point_ssbo};
+        SDL_BindGPUFragmentStorageBuffers (pass, 1, buffers, 2);
 
         if (mesh->index_buffer) {
             SDL_GPUBufferBinding ibo_binding = {

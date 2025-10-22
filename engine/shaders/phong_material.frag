@@ -1,67 +1,85 @@
 #version 450
 
 layout(location = 0) in vec3 fragColor;
-layout(location = 1) in vec2 TexCoord;
-layout(location = 2) in vec3 Normal;
-layout(location = 3) in vec3 FragPos;
+layout (location = 1) in vec2 TexCoord;
+layout (location = 2) in vec3 Normal;
+layout (location = 3) in vec3 FragPos;
 
-layout(set = 2, binding = 0) uniform sampler2D texture1;
+struct AmbientLight {
+    vec4 color; // rgb, a is intensity
+};
+struct PointLight {
+    vec4 position;  // xyz + padding
+    vec4 color;     // rgb + intensity
+};
 
-layout(location = 0) out vec4 outColor;
+layout (set = 2, binding = 0) uniform sampler2D texture1;
 
-layout(std140, set = 3, binding = 0) uniform UBO {
-    vec4 color;
-    mat4 model;
-    mat4 view;
-    mat4 projection;
-    vec4 ambient_color[64];
-    vec4 pointLightPos[64];
-    vec4 pointLightColor[64];
-    vec4 viewPos;
+// SSBOs
+layout (std430, set = 2, binding = 1) buffer AmbientBuffer {
+    AmbientLight ambients[];
+};
+layout (std430, set = 2, binding = 2) buffer PointBuffer {
+    PointLight points[];
+};
+
+// Frame UBO(s)
+layout (std140, set = 3, binding = 0) uniform FrameUBO {
+    vec4 cam_pos;
+    vec4 cam_rot;
+    int ambient_count;
+    int point_count;
+    int pad0; int pad1; // std140 padding
 } ubo;
+
+// output color
+layout (location = 0) out vec4 outColor;
 
 void main() {
     vec4 texColor = texture(texture1, TexCoord);
     vec3 objectColor = texColor.rgb * fragColor;
-    vec3 view_xyz = vec3(ubo.viewPos.x, ubo.viewPos.y, ubo.viewPos.z);
+    vec3 view_xyz = ubo.cam_pos.xyz;
     vec3 norm = normalize(Normal);
 
-    vec3 ambient_sum = vec3(0.0);
-    vec3 diffuse_sum = vec3(0.0);
-    vec3 specular_sum = vec3(0.0);
+    vec3 ambient_sum = vec3(0.1, 0.1, 0.1);
 
     // ambient lights
-    for (int i = 0; i < 64; i++) {
-        float brightness = ubo.ambient_color[i].w;
-        if (brightness <= 0.0) {
-            break;
+    for (int i = 0; i < ubo.ambient_count; i++) {
+        float intensity = ambients[i].color.a;
+        if (intensity <= 0.0) {
+            continue;
         }
-        vec3 ambient_rgb = ubo.ambient_color[i].rgb;
-        ambient_sum += brightness * ambient_rgb * objectColor;
+        vec3 rgb = ambients[i].color.rgb;
+
+        ambient_sum += intensity * rgb * objectColor;
     }
 
-    // point light diffuse
-    for (int i = 0; i < 64; i++) {
-        float brightness = ubo.pointLightColor[i].w;
-        if (brightness <= 0.0) {
-            break;
-        }
-        vec3 point_xyz = ubo.pointLightPos[i].xyz;
-        vec3 light_dir = normalize(point_xyz - FragPos);
-        vec3 point_rgb = ubo.pointLightColor[i].rgb;
+    // point lights
+    vec3 diffuse_sum = vec3(0.0);
+    vec3 specular_sum = vec3(0.0);
+    // for (int i = 0; i < ubo.point_count; i++) {
+    //     float intensity = points[i].color.a;
+    //     if (intensity <= 0.0) {
+    //         continue;
+    //     }
+    //     vec3 point_xyz = points[i].position.xyz;
+    //     vec3 light_dir = normalize(point_xyz - FragPos);
+    //     vec3 point_rgb = points[i].color.rgb;
 
-        // diffuse
-        float diff = max(dot(norm, light_dir), 0.0);
-        diffuse_sum += brightness * point_rgb * diff * objectColor;
+    //     // diffuse
+    //     float diff = max(dot(norm, light_dir), 0.0);
+    //     diffuse_sum += intensity * point_rgb * diff * objectColor;
 
-        // specular
-        vec3 view_dir = normalize(view_xyz - FragPos);
-        vec3 reflection_dir = reflect(-light_dir, norm);
-        float spec = pow(max(dot(view_dir, reflection_dir), 0.0), 256);
-        specular_sum += 0.5 * spec * point_rgb;
-    }
+    //     // specular
+    //     vec3 view_dir = normalize(view_xyz - FragPos);
+    //     vec3 reflection_dir = reflect(-light_dir, norm);
+    //     float spec = pow(max(dot(view_dir, reflection_dir), 0.0), 256);
+    //     specular_sum += 0.5 * spec * point_rgb;
+    // }
+    diffuse_sum = points[0].color.rgb;
 
-    // Combine (for now, ambient + diffuse; add specular next)
+    // Combine
     vec3 result = ambient_sum + diffuse_sum + specular_sum;
     outColor = vec4(result, texColor.a);
+    // outColor = vec4(1.0, 1.0, 1.0, 1.0);
 }

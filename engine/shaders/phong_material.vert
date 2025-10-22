@@ -9,21 +9,22 @@ layout(location = 1) out vec2 TexCoord;
 layout(location = 2) out vec3 Normal;  // Pass transformed normal
 layout(location = 3) out vec3 FragPos;  // Pass world-space position for light calc
 
-layout(std140, set = 1, binding = 0) uniform UBO {
-    vec4 color;
-    mat4 model;
+// Frame UBO
+layout(std140, set = 1, binding = 0) uniform FrameUBO {
     mat4 view;
     mat4 projection;
-    vec4 ambient_color[64];
-    vec4 pointLightPos[64];
-    vec4 pointLightColor[64];
-    vec4 viewPos;
-} ubo;
+} frame_ubo;
+
+// object ubo
+layout(std140, set = 1, binding = 1) uniform ObjectUBO {
+    mat4 model;
+    vec4 color;
+} object_ubo;
 
 void main() {
-    gl_Position = ubo.projection * ubo.view * ubo.model * vec4(aPos, 1.0);
-    fragColor = ubo.color.rgb;
+    gl_Position = frame_ubo.projection * frame_ubo.view * object_ubo.model * vec4(aPos, 1.0);
+    fragColor = object_ubo.color.rgb;
     TexCoord = aTexCoord;
-    FragPos = vec3(ubo.model * vec4(aPos, 1.0));  // World pos
-    Normal = mat3(transpose(inverse(ubo.model))) * aNormal;  // Transform normal (normal matrix)
+    FragPos = vec3(object_ubo.model * vec4(aPos, 1.0));  // World pos
+    Normal = mat3(transpose(inverse(object_ubo.model))) * aNormal;  // Transform normal (normal matrix)
 }

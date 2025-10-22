@@ -12,7 +12,7 @@ typedef struct {
 } vec3;
 
 typedef struct {
-    float w, x, y, z;
+    float x, y, z, w;
 } vec4;
 
 typedef float mat4[16];

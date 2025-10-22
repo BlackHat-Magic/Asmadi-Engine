@@ -61,9 +61,8 @@ The main goal with this project was to learn graphics programming. In game devel
     - [ ] TinyPhysicsEngine-like soft body physics for embedded devices
     - [ ] SDF-based primitive-only collision system
     - [ ] Conventional primitive and mesh collision system with soft body support
+- [ ] Lighting
+    - [ ] Directional Ambient Lights
 - [ ] Performance Profiler
-
-## Todo
-
-- [ ] Sphere butt
-- [ ] Built-in performance profiler
+- [ ] Software Rasterizer
+- [ ] Fixed-Point Software Rasterizer

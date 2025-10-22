@@ -7,25 +7,11 @@
 
 #include <math/matrix.h>
 
-// TODO: More robust max lights
-#define MAX_LIGHTS 64
-
 typedef enum {
     SIDE_FRONT,
     SIDE_BACK,
     SIDE_DOUBLE,
 } MaterialSide;
-
-typedef struct {
-    vec4 color;
-    float model[16];
-    float view[16];
-    float proj[16];
-    SDL_FColor ambient_color[MAX_LIGHTS];     // RGB + Strength
-    vec4 point_light_pos[MAX_LIGHTS];   // xyz + padding (16-byte aligned)
-    SDL_FColor point_light_color[MAX_LIGHTS]; // RGB + Strength
-    vec4 camera_pos;
-} UBOData;
 
 typedef Uint32 Entity;
 
@@ -44,12 +30,13 @@ typedef struct {
 } MeshComponent;
 
 typedef struct {
-    vec3 color;
+    SDL_FColor color;
+    SDL_FColor emissive;
     SDL_GPUTexture* texture;
+    SDL_GPUSampler* sampler;
     SDL_GPUShader* vertex_shader;
     SDL_GPUShader* fragment_shader;
     SDL_GPUGraphicsPipeline* pipeline;
-    MaterialSide side;
 } MaterialComponent;
 
 typedef struct {
@@ -97,8 +84,13 @@ typedef struct {
 // Billboard is a flag (no data)
 
 typedef SDL_FColor AmbientLightComponent;
+typedef SDL_FColor GPUAmbientLight;
 
 typedef SDL_FColor PointLightComponent; // position is another component
+typedef struct {
+    vec4 position;
+    SDL_FColor color;
+} GPUPointLight;
 
 // ECS API
 Entity create_entity (void);
@@ -148,19 +140,9 @@ bool has_ui (Entity e);
 UIComponent* get_ui (Entity e);
 void remove_ui (Entity e);
 
-// Ambient Lights
-void add_ambient_light (Entity e, vec3 rgb, float brightness);
-AmbientLightComponent* get_ambient_light (Entity e);
-bool has_ambient_light (Entity e);
-void remove_ambient_light (Entity e);
-
-// Point Lights
-void add_point_light (Entity e, vec3 rgb, float brightness);
-PointLightComponent* get_point_light (Entity e);
-bool has_point_light (Entity e);
-void remove_point_light (Entity e);
-
-// Systems
+// renderer
+// TODO: render to arbitrary texture, not window
+// TODO: ASM_GPURendererCreateInfo struct
 typedef struct {
     SDL_GPUDevice* device;
     SDL_Window* window;
@@ -169,10 +151,29 @@ typedef struct {
     Uint32 dwidth;
     Uint32 dheight;
     SDL_GPUTexture* depth_texture;
-    SDL_GPUTexture* white_texture;
-    SDL_GPUSampler* sampler;
     SDL_GPUTextureFormat format;
+    SDL_GPUBuffer* ambient_ssbo;
+    Uint32 ambient_size;
+    SDL_GPUBuffer* point_ssbo;
+    Uint32 point_size;
 } gpu_renderer;
+gpu_renderer* renderer_init (SDL_GPUDevice* device, SDL_Window* window, const Uint32 width, const Uint32 height);
+
+// Ambient Lights
+// rgba -> rgb + intensity
+void add_ambient_light (Entity e, SDL_FColor color);
+AmbientLightComponent* get_ambient_light (Entity e);
+bool has_ambient_light (Entity e);
+void remove_ambient_light (Entity e);
+
+// Point Lights
+// rgba -> rgb + intensity
+void add_point_light (Entity e, SDL_FColor color, gpu_renderer* renderer);
+PointLightComponent* get_point_light (Entity e);
+bool has_point_light (Entity e);
+void remove_point_light (Entity e);
+
+// Systems
 void fps_controller_event_system (SDL_Event* event);
 void fps_controller_update_system (float dt);
 SDL_AppResult render_system (

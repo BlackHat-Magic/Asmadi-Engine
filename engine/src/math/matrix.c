@@ -74,15 +74,15 @@ float vec4_dot (vec4 a, vec4 b) {
 }
 
 // Quaternion helpers
-vec4 quat_from_euler (vec3 euler) {
-    float cx = cosf (euler.x * 0.5f), sx = sinf (euler.x * 0.5f);
-    float cy = cosf (euler.y * 0.5f), sy = sinf (euler.y * 0.5f);
-    float cz = cosf (euler.z * 0.5f), sz = sinf (euler.z * 0.5f);
-    return (vec4) {
-        cx * cy * cz + sx * sy * sz, // w
-        sx * cy * cz - cx * sy * sz, // x
-        cx * sy * cz + sx * cy * sz, // y
-        cx * cy * sz - sx * sy * cz  // z
+vec4 quat_from_euler(vec3 euler) {
+    float cx = cosf(euler.x * 0.5f), sx = sinf(euler.x * 0.5f);
+    float cy = cosf(euler.y * 0.5f), sy = sinf(euler.y * 0.5f);
+    float cz = cosf(euler.z * 0.5f), sz = sinf(euler.z * 0.5f);
+    return (vec4){
+        .x = sx * cy * cz - cx * sy * sz,
+        .y = cx * sy * cz + sx * cy * sz,
+        .z = cx * cy * sz - sx * sy * cz,
+        .w = cx * cy * cz + sx * sy * sz
     };
 }
 vec3 euler_from_quat (vec4 q) {
@@ -105,44 +105,44 @@ vec3 euler_from_quat (vec4 q) {
 
     return (vec3) {pitch, yaw, roll};
 }
-vec4 quat_multiply (vec4 a, vec4 b) {
-    return (vec4) {
-        a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z, // w
-        a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y, // x
-        a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x, // y
-        a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w  // z
+vec4 quat_multiply(vec4 a, vec4 b) {
+    return (vec4){
+        .w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z, // scalar
+        .x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+        .y = a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+        .z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w
     };
 }
-vec4 quat_conjugate (vec4 q) {
-    return (vec4) {q.w, -q.x, -q.y, -q.z};
+vec4 quat_conjugate(vec4 q) {
+    return (vec4){ .x = -q.x, .y = -q.y, .z = -q.z, .w = q.w };
 }
-vec4 quat_normalize (vec4 q) {
-    float len = sqrtf (q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
+vec4 quat_normalize(vec4 q) {
+    float len = sqrtf(q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
     if (len > 0.0f) {
-        return (vec4) {q.w / len, q.x / len, q.y / len, q.z / len};
+        return (vec4){ .x = q.x/len, .y = q.y/len, .z = q.z/len, .w = q.w/len };
     }
-    return (vec4) {1.0f, 0.0f, 0.0f, 0.0f}; // Identity quat
+    return (vec4){ .x = 0.0f, .y = 0.0f, .z = 0.0f, .w = 1.0f }; // identity
 }
-vec3 quat_rotate (vec4 q, vec3 v) {
-    vec4 pv = {0.0f, v.x, v.y, v.z};
-    vec4 conj_q = quat_conjugate (q);
-    vec4 temp = quat_multiply (q, pv);
-    vec4 result = quat_multiply (temp, conj_q);
-    return (vec3) {result.x, result.y, result.z};
+vec3 quat_rotate(vec4 q, vec3 v) {
+    vec4 pv = { .x = v.x, .y = v.y, .z = v.z, .w = 0.0f };
+    vec4 conj_q = quat_conjugate(q);
+    vec4 temp = quat_multiply(q, pv);
+    vec4 result = quat_multiply(temp, conj_q);
+    return (vec3){ result.x, result.y, result.z };
 }
-vec4 quat_from_axis_angle (vec3 axis, float angle) {
-    float half_angle = angle * 0.5f;
-    float c = cosf (half_angle);
-    float s = sinf (half_angle);
-    axis = vec3_normalize (axis);
-    return (vec4) {c, axis.x * s, axis.y * s, axis.z * s};
+vec4 quat_from_axis_angle(vec3 axis, float angle) {
+    float half = angle * 0.5f;
+    float c = cosf(half);
+    float s = sinf(half);
+    axis = vec3_normalize(axis);
+    return (vec4){ .x = axis.x * s, .y = axis.y * s, .z = axis.z * s, .w = c };
 }
-vec3 vec3_rotate (vec4 q, vec3 v) {
-    vec4 vq = {0.0f, v.x, v.y, v.z};
-    vec4 conj_q = quat_conjugate (q);
-    vec4 temp = quat_multiply (q, vq);
-    vec4 result = quat_multiply (temp, conj_q);
-    return (vec3) {result.x, result.y, result.z};
+vec3 vec3_rotate(vec4 q, vec3 v) {
+    vec4 vq = { .x = v.x, .y = v.y, .z = v.z, .w = 0.0f };
+    vec4 conj_q = quat_conjugate(q);
+    vec4 temp = quat_multiply(q, vq);
+    vec4 result = quat_multiply(temp, conj_q);
+    return (vec3){ result.x, result.y, result.z };
 }
 
 // MAT4

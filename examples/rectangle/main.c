@@ -21,7 +21,7 @@
 
 typedef struct {
     bool quit;
-    gpu_renderer renderer;
+    gpu_renderer* renderer;
     Entity player;
     Entity torus;
     Uint64 last_time;
@@ -31,6 +31,7 @@ typedef struct {
     float frame_rate;
     Uint64 frame_count;
     bool relative_mouse;
+    SDL_GPUTexture* white_texture;
 } AppState;
 
 SDL_AppResult SDL_AppEvent (void* appstate, SDL_Event* event) {
@@ -47,7 +48,7 @@ SDL_AppResult SDL_AppEvent (void* appstate, SDL_Event* event) {
     case SDL_EVENT_KEY_DOWN:
         if (event->key.key == SDLK_ESCAPE) {
             state->relative_mouse = !state->relative_mouse;
-            SDL_SetWindowRelativeMouseMode (state->renderer.window, state->relative_mouse);
+            SDL_SetWindowRelativeMouseMode (state->renderer->window, state->relative_mouse);
         }
         break;
     }
@@ -68,8 +69,6 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
         SDL_Log ("Failed to allocate app state.");
         return SDL_APP_FAILURE;
     }
-    state->renderer.width = STARTING_WIDTH;
-    state->renderer.height = STARTING_HEIGHT;
     state->player = (Entity) -1;
 
     // initialize SDL
@@ -79,11 +78,11 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     }
 
     // Create window
-    state->renderer.window = SDL_CreateWindow (
-        "C Vulkan", state->renderer.width, state->renderer.height,
+    SDL_Window* window = SDL_CreateWindow (
+        "Guess what I brought... RECTANGLES!!!",STARTING_WIDTH, STARTING_HEIGHT,
         SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN
     );
-    if (!state->renderer.window) {
+    if (window == NULL) {
         SDL_Log ("Couldn't create window/renderer: %s", SDL_GetError ());
         return SDL_APP_FAILURE;
     }
@@ -95,62 +94,26 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     }
 
     // create GPU device
-    state->renderer.device =
+    SDL_GPUDevice* device =
         SDL_CreateGPUDevice (SDL_GPU_SHADERFORMAT_SPIRV, false, NULL);
-    if (!state->renderer.device) {
+    if (device == NULL) {
         SDL_Log ("Couldn't create SDL_GPU_DEVICE");
         return SDL_APP_FAILURE;
     }
-    if (!SDL_ClaimWindowForGPUDevice (state->renderer.device, state->renderer.window)) {
+    if (!SDL_ClaimWindowForGPUDevice (device, window)) {
         SDL_Log ("Couldn't claim window for GPU device: %s", SDL_GetError ());
         return SDL_APP_FAILURE;
     }
-    state->renderer.format =
-        SDL_GetGPUSwapchainTextureFormat (state->renderer.device, state->renderer.window);
-    if (state->renderer.format == SDL_GPU_TEXTUREFORMAT_INVALID) {
-        SDL_Log ("Failed to get swapchain texture format: %s", SDL_GetError ());
-        return SDL_APP_FAILURE;
-    }
 
-    // depth texture
-    SDL_GPUTextureCreateInfo depth_info = {
-        .type = SDL_GPU_TEXTURETYPE_2D,
-        .format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
-        .width = state->renderer.width,
-        .height = state->renderer.height,
-        .layer_count_or_depth = 1,
-        .num_levels = 1,
-        .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET
-    };
-    state->renderer.depth_texture = SDL_CreateGPUTexture (state->renderer.device, &depth_info);
-    if (state->renderer.depth_texture == NULL) {
-        SDL_Log ("Failed to create depth texture: %s", SDL_GetError ());
+    state->renderer = renderer_init (device, window, STARTING_WIDTH, STARTING_HEIGHT);
+    if (state->renderer == NULL) {
         return SDL_APP_FAILURE;
     }
-    state->renderer.dwidth = state->renderer.width;
-    state->renderer.dheight = state->renderer.height;
 
     // load texture
-    state->renderer.white_texture = create_white_texture (state->renderer.device);
-    if (!state->renderer.white_texture)
+    state->white_texture = create_white_texture (state->renderer->device);
+    if (!state->white_texture)
         return SDL_APP_FAILURE; // logging handled inside load_texture()
-
-    // create sampler
-    SDL_GPUSamplerCreateInfo sampler_info = {
-        .min_filter = SDL_GPU_FILTER_LINEAR,
-        .mag_filter = SDL_GPU_FILTER_LINEAR,
-        .mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR,
-        .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
-        .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
-        .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
-        .max_anisotropy = 1.0f,
-        .enable_anisotropy = false
-    };
-    state->renderer.sampler = SDL_CreateGPUSampler (state->renderer.device, &sampler_info);
-    if (!state->renderer.sampler) {
-        SDL_Log ("Failed to create sampler: %s", SDL_GetError ());
-        return SDL_APP_FAILURE;
-    }
 
     // player
     state->player = create_entity ();
@@ -161,9 +124,9 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     add_camera (state->player, STARTING_FOV, 0.01f, 1000.0f);
     add_fps_controller (state->player, MOUSE_SENSE, MOVEMENT_SPEED);
     state->relative_mouse = true;
-    SDL_SetWindowRelativeMouseMode (state->renderer.window, state->relative_mouse);
+    SDL_SetWindowRelativeMouseMode (state->renderer->window, state->relative_mouse);
     UIComponent* ui = create_ui_component (
-        &state->renderer, 255, 255, "./assets/NotoSans-Regular.ttf", 12.0f
+        state->renderer, 255, 255, "./assets/NotoSans-Regular.ttf", 12.0f
     );
     if (ui == NULL) {
         // logging handled inside function
@@ -176,13 +139,23 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     // torus
     state->torus = create_entity ();
     MeshComponent torus_mesh = create_torus_mesh (
-        0.5f, 0.2f, 16, 32, (float) M_PI * 2.0f, state->renderer.device
+        0.5f, 0.2f, 16, 32, (float) M_PI * 2.0f, state->renderer->device
     );
     if (torus_mesh.vertex_buffer == NULL) return SDL_APP_FAILURE;
     add_mesh (state->torus, torus_mesh);
     // torus material
-    MaterialComponent torus_material =
-        create_phong_material ((vec3) {0.0f, 1.0f, 0.0f}, SIDE_FRONT, &state->renderer);
+    SDL_GPUSamplerCreateInfo torus_sampler_info = {
+        .min_filter = SDL_GPU_FILTER_LINEAR,
+        .mag_filter = SDL_GPU_FILTER_LINEAR,
+        .mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR,
+        .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+        .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+        .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+        .max_anisotropy = 1.0f,
+        .enable_anisotropy = false
+    };
+    SDL_GPUSampler* torus_sampler = SDL_CreateGPUSampler (state->renderer->device, &torus_sampler_info);
+    MaterialComponent torus_material = create_phong_material (state->renderer, (SDL_FColor) {1.0f, 1.0f, 1.0f, 1.0f}, (SDL_FColor) {1.0f, 1.0f, 1.0f, 1.0f}, SDL_GPU_CULLMODE_BACK, state->white_texture, torus_sampler);
     add_material (state->torus, torus_material);
     // torus transform
     add_transform (
@@ -192,15 +165,15 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
 
     // ambient light
     Entity ambient_light = create_entity ();
-    add_ambient_light (ambient_light, (vec3) {1.0f, 1.0f, 1.0f}, 0.1f);
+    add_ambient_light (ambient_light, (SDL_FColor) {1.0f, 1.0f, 1.0f, 0.1f});
 
     // point light
     Entity point_light = create_entity ();
-    add_point_light (point_light, (vec3) {1.0f, 1.0f, 1.0f}, 1.0f);
     add_transform (
         point_light, (vec3) {2.0f, 2.0f, -2.0f}, (vec3) {0.0f, 0.0f, 0.0f},
         (vec3) {1.0f, 1.0f, 1.0f}
     );
+    add_point_light (point_light, (SDL_FColor) {1.0f, 1.0f, 1.0f, 1.0f}, state->renderer);
 
     state->last_time = SDL_GetPerformanceCounter ();
 
@@ -241,16 +214,16 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
 
     char buffer[64];
     sprintf (buffer, "Mesh render: %.1f", mesh_time_ms);
-    draw_text (ui, state->renderer.device, buffer, 5.0f, 5.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+    draw_text (ui, state->renderer->device, buffer, 5.0f, 5.0f, 1.0f, 1.0f, 1.0f, 1.0f);
     sprintf (buffer, "UI render: %.1f", ui_time_ms);
-    draw_text (ui, state->renderer.device, buffer, 5.0f, 17.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+    draw_text (ui, state->renderer->device, buffer, 5.0f, 17.0f, 1.0f, 1.0f, 1.0f, 1.0f);
     sprintf (buffer, "Total render: %.1f", render_time_ms);
-    draw_text (ui, state->renderer.device, buffer, 5.0f, 29.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+    draw_text (ui, state->renderer->device, buffer, 5.0f, 29.0f, 1.0f, 1.0f, 1.0f, 1.0f);
     if (state->frame_count % 60 == 0) {
         state->frame_rate = 1000.0f / render_time_ms;
     }
     sprintf (buffer, "Framerate: %.3f", state->frame_rate);
-    draw_text (ui, state->renderer.device, buffer, 5.0f, 41.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+    draw_text (ui, state->renderer->device, buffer, 5.0f, 41.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 
     TransformComponent transform = *get_transform (state->torus);
     vec3 rotation = euler_from_quat (transform.rotation);
@@ -262,7 +235,7 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
     // camera forward vector
     fps_controller_update_system (dt);
 
-    render_system (&state->renderer, cam, &state->prerender, &state->preui, &state->postrender);
+    render_system (state->renderer, cam, &state->prerender, &state->preui, &state->postrender);
 
     return SDL_APP_CONTINUE;
 }
@@ -274,18 +247,21 @@ void SDL_AppQuit (void* appstate, SDL_AppResult result) {
 
     if (ui.rects) free (ui.rects);
     if (ui.pipeline)
-        SDL_ReleaseGPUGraphicsPipeline (state->renderer.device, ui.pipeline);
-    if (ui.fragment) SDL_ReleaseGPUShader (state->renderer.device, ui.fragment);
-    if (ui.vertex) SDL_ReleaseGPUShader (state->renderer.device, ui.vertex);
+        SDL_ReleaseGPUGraphicsPipeline (state->renderer->device, ui.pipeline);
+    if (ui.fragment) SDL_ReleaseGPUShader (state->renderer->device, ui.fragment);
+    if (ui.vertex) SDL_ReleaseGPUShader (state->renderer->device, ui.vertex);
 
-    free_pools (state->renderer.device);
-    if (state->renderer.white_texture) {
-        SDL_ReleaseGPUTexture (state->renderer.device, state->renderer.white_texture);
+    free_pools (state->renderer->device);
+    if (state->white_texture) {
+        SDL_ReleaseGPUTexture (state->renderer->device, state->white_texture);
     }
-    if (state->renderer.sampler) {
-        SDL_ReleaseGPUSampler (state->renderer.device, state->renderer.sampler);
+    // TODO: update free pools lol
+    // if (state->renderer->sampler) {
+    //     SDL_ReleaseGPUSampler (state->renderer->device, state->renderer->sampler);
+    // }
+    if (state->renderer->depth_texture) {
+        SDL_ReleaseGPUTexture (state->renderer->device, state->renderer->depth_texture);
     }
-    if (state->renderer.depth_texture) {
-        SDL_ReleaseGPUTexture (state->renderer.device, state->renderer.depth_texture);
-    }
+    free (state->renderer);
+
 }
